@@ -2,8 +2,9 @@ defmodule NexusAvatars.PreviewController do
   @moduledoc """
   GET /preview?username=alice&style=mech
 
-  Returns a 256x256 WebP image directly — used by the JS style picker
-  to show live previews without persisting anything. No auth required.
+  Returns the SVG directly — no rasterization, since librsvg may not be
+  available. Nexus itself serves SVGs as-is without converting them.
+  No auth required.
   """
 
   use Phoenix.Controller, formats: [:json]
@@ -20,35 +21,13 @@ defmodule NexusAvatars.PreviewController do
       |> put_status(400)
       |> json(%{error: "Invalid style. Valid: #{Enum.join(@valid_styles, ", ")}"})
     else
-      case generate_preview(username, style) do
-        {:ok, webp_binary} ->
-          conn
-          |> put_resp_header("content-type", "image/webp")
-          |> put_resp_header("cache-control", "public, max-age=3600")
-          |> send_resp(200, webp_binary)
+      svg_module = style_module(style)
+      svg        = svg_module.render(username)
 
-        {:error, reason} ->
-          conn
-          |> put_status(500)
-          |> json(%{error: "Preview generation failed: #{inspect(reason)}"})
-      end
-    end
-  end
-
-  # ---------------------------------------------------------------------------
-  # Private — build SVG and rasterize without storing
-  # ---------------------------------------------------------------------------
-
-  defp generate_preview(username, style) do
-    svg_module = style_module(style)
-
-    try do
-      svg    = svg_module.render(username)
-      image  = Image.from_svg!(svg, width: 256)
-      binary = Image.write_to_binary!(image, ".webp", quality: 85)
-      {:ok, binary}
-    rescue
-      e -> {:error, inspect(e)}
+      conn
+      |> put_resp_header("content-type", "image/svg+xml")
+      |> put_resp_header("cache-control", "public, max-age=3600")
+      |> send_resp(200, svg)
     end
   end
 

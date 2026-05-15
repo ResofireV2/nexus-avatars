@@ -4,8 +4,7 @@ defmodule NexusAvatars.Generator do
 
   For a given user and style, this module:
     1. Builds an SVG string via the appropriate style module
-    2. Rasterizes it to a 256x256 WebP via libvips (Image library)
-    3. Stores the file under nexus-avatars/avatars/nxa_{hex}.webp
+    2. Stores the SVG under nexus-avatars/avatars/nxa_{hex}.svg
     4. Updates users.avatar_url via Nexus.Accounts.update_avatar/2
     5. Upserts the style choice into nexus_avatars_user_styles
 
@@ -35,8 +34,7 @@ defmodule NexusAvatars.Generator do
   """
   def generate_for_user(user, style) when style in @all_styles do
     with {:ok, svg}     <- build_svg(user.username, style),
-         {:ok, webp}    <- rasterize(svg),
-         {:ok, rel_url} <- store(webp, user.username),
+         {:ok, rel_url} <- store_svg(svg, user.username),
          {:ok, _user}   <- Accounts.update_avatar(user, rel_url),
          :ok            <- upsert_style(user.id, style) do
       {:ok, rel_url}
@@ -147,7 +145,7 @@ defmodule NexusAvatars.Generator do
     files_deleted =
       nxa_filenames
       |> Enum.reduce(0, fn url, acc ->
-        # url is like "nxa_abc123.webp" — strip leading slash if present
+        # url is like "nxa_abc123.svg" — strip leading slash if present
         filename = Path.basename(url)
         path     = Nexus.Extensions.Storage.path(@slug, "avatars/#{filename}")
 
@@ -194,44 +192,24 @@ defmodule NexusAvatars.Generator do
   defp build_svg(_username, style),     do: {:error, "No renderer for style: #{style}"}
 
   # ---------------------------------------------------------------------------
-  # Private — rasterization via libvips
+  # Private — storage (SVG, no rasterization)
+  # Nexus serves SVGs as-is from uploads; librsvg is not guaranteed present.
   # ---------------------------------------------------------------------------
 
-  defp rasterize(svg_string) do
-    try do
-      image =
-        svg_string
-        |> then(&Image.from_svg!(&1, width: @size))
-
-      webp_binary = Image.write_to_binary!(image, ".webp", quality: 85)
-      {:ok, webp_binary}
-    rescue
-      e -> {:error, "Rasterization failed: #{inspect(e)}"}
-    end
-  end
-
-  # ---------------------------------------------------------------------------
-  # Private — storage
-  # ---------------------------------------------------------------------------
-
-  defp store(webp_binary, username) do
+  defp store_svg(svg_string, username) do
     :ok = Nexus.Extensions.Storage.ensure_dir(@slug, "avatars")
 
-    # nxa_ prefix + username hash for uniqueness and flush identification
     hex      = :crypto.strong_rand_bytes(12) |> Base.encode16(case: :lower)
-    filename = "nxa_#{:erlang.phash2(username)}_#{hex}.webp"
-    path     = Nexus.Extensions.Storage.path(@slug, "avatars/#{filename}")
+    filename = "nxa_\#{:erlang.phash2(username)}_\#{hex}.svg"
+    path     = Nexus.Extensions.Storage.path(@slug, "avatars/\#{filename}")
 
-    case File.write(path, webp_binary) do
+    case File.write(path, svg_string) do
       :ok ->
-        # Return just the filename — update_avatar stores this in avatar_url.
-        # Nexus serves it via /uploads/extensions/nexus-avatars/avatars/{filename}
-        # but we store only the filename so the nxa_ prefix check works.
-        {:ok, "nxa_#{:erlang.phash2(username)}_#{hex}.webp"}
-
+        {:ok, filename}
       {:error, reason} ->
-        {:error, "Storage write failed: #{inspect(reason)}"}
+        {:error, "Storage write failed: \#{inspect(reason)}"}
     end
+  end
   end
 
   # ---------------------------------------------------------------------------
