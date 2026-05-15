@@ -200,16 +200,15 @@ defmodule NexusAvatars.Generator do
     :ok = Nexus.Extensions.Storage.ensure_dir(@slug, "avatars")
 
     hex      = :crypto.strong_rand_bytes(12) |> Base.encode16(case: :lower)
-    filename = "nxa_\#{:erlang.phash2(username)}_\#{hex}.svg"
-    path     = Nexus.Extensions.Storage.path(@slug, "avatars/\#{filename}")
+    filename = "nxa_#{:erlang.phash2(username)}_#{hex}.svg"
+    path     = Nexus.Extensions.Storage.path(@slug, "avatars/#{filename}")
 
     case File.write(path, svg_string) do
       :ok ->
         {:ok, filename}
       {:error, reason} ->
-        {:error, "Storage write failed: \#{inspect(reason)}"}
+        {:error, "Storage write failed: #{inspect(reason)}"}
     end
-  end
   end
 
   # ---------------------------------------------------------------------------
