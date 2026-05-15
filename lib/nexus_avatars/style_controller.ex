@@ -74,7 +74,5 @@ defmodule NexusAvatars.StyleController do
   # Private
   # ---------------------------------------------------------------------------
 
-  defp served_url(filename) do
-    Nexus.Extensions.Storage.url("nexus-avatars", "avatars/#{filename}")
-  end
+  defp served_url(url), do: url
 end

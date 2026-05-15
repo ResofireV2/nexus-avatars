@@ -4,12 +4,18 @@ defmodule NexusAvatars.Generator do
 
   For a given user and style, this module:
     1. Builds an SVG string via the appropriate style module
-    2. Stores the SVG under nexus-avatars/avatars/nxa_{hex}.svg
-    4. Updates users.avatar_url via Nexus.Accounts.update_avatar/2
-    5. Upserts the style choice into nexus_avatars_user_styles
+    2. Writes the SVG to a temp file
+    3. Rasterizes it to a 256×256 WebP via Image (libvips + librsvg)
+    4. Stores the WebP under nexus-avatars/avatars/nxa_{hash}_{hex}.webp
+    5. Updates users.avatar_url via Nexus.Accounts.update_avatar/2
+    6. Upserts the style choice into nexus_avatars_user_styles
 
   All generated filenames are prefixed with `nxa_` so the flush operation
   can identify and remove only files produced by this extension.
+
+  Requires librsvg to be present in the runtime environment (it is included
+  in Nexus's Dockerfile.prod). The temp SVG is always deleted after
+  rasterization whether or not the conversion succeeds.
   """
 
   require Logger
@@ -192,22 +198,28 @@ defmodule NexusAvatars.Generator do
   defp build_svg(_username, style),     do: {:error, "No renderer for style: #{style}"}
 
   # ---------------------------------------------------------------------------
-  # Private — storage (SVG, no rasterization)
-  # Nexus serves SVGs as-is from uploads; librsvg is not guaranteed present.
+  # Private — storage (SVG → WebP rasterization via libvips + librsvg)
   # ---------------------------------------------------------------------------
 
   defp store_svg(svg_string, username) do
     :ok = Nexus.Extensions.Storage.ensure_dir(@slug, "avatars")
 
     hex      = :crypto.strong_rand_bytes(12) |> Base.encode16(case: :lower)
-    filename = "nxa_#{:erlang.phash2(username)}_#{hex}.svg"
-    path     = Nexus.Extensions.Storage.path(@slug, "avatars/#{filename}")
+    hash     = :erlang.phash2(username)
+    tmp_path = System.tmp_dir!() |> Path.join("nxa_#{hash}_#{hex}.svg")
+    webp_filename = "nxa_#{hash}_#{hex}.webp"
+    webp_path     = Nexus.Extensions.Storage.path(@slug, "avatars/#{webp_filename}")
 
-    case File.write(path, svg_string) do
-      :ok ->
-        {:ok, Nexus.Extensions.Storage.url(@slug, "avatars/#{filename}")}
+    with :ok <- File.write(tmp_path, svg_string),
+         {:ok, image} <- Image.open(tmp_path, []),
+         {:ok, image} <- Image.thumbnail(image, @size, resize: :force),
+         {:ok, _}     <- Image.write(image, webp_path, quality: 90, suffix: ".webp") do
+      File.rm(tmp_path)
+      {:ok, Nexus.Extensions.Storage.url(@slug, "avatars/#{webp_filename}")}
+    else
       {:error, reason} ->
-        {:error, "Storage write failed: #{inspect(reason)}"}
+        File.rm(tmp_path)
+        {:error, "WebP rasterization failed: #{inspect(reason)}"}
     end
   end
 
