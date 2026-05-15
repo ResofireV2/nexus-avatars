@@ -60,7 +60,7 @@
   const STYLES = [
     { key: "mech",      label: "Mech",      icon: "fa-robot"         },
     { key: "feline",    label: "Orc",       icon: "fa-skull"         },
-    { key: "canine",    label: "Canine",    icon: "fa-dog"           },
+    { key: "canine",    label: "Zombie",    icon: "fa-skull-crossbones" },
     { key: "inkblot",   label: "Inkblot",   icon: "fa-droplet"       },
     { key: "emblem",    label: "Emblem",    icon: "fa-shield-halved" },
     { key: "snowflake", label: "Snowflake", icon: "fa-snowflake"     },
