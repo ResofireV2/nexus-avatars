@@ -271,27 +271,57 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Admin panel — TabbedPanel with Settings + Maintenance
+  // Admin panel — custom tab shell (Styles + Maintenance)
   // ---------------------------------------------------------------------------
   function AdminPanel() {
-    return e(NET.TabbedPanel, {
-      slug: SLUG,
-      tabs: [
-        {
-          key:    "styles",
-          label:  "Styles",
-          icon:   "fa-masks-theater",
-          component: () => e(StylesTab),
-        },
-        {
-          key:    "maintenance",
-          label:  "Maintenance",
-          icon:   "fa-wrench",
-          fields: [], // no SimpleSettingsPanel fields — fully custom
-          component: () => e(MaintenanceTab),
-        },
-      ],
-    });
+    const [activeTab, setActiveTab] = useState("styles");
+
+    const tabs = [
+      { key: "styles",      label: "Styles",      icon: "fa-masks-theater" },
+      { key: "maintenance", label: "Maintenance",  icon: "fa-wrench" },
+    ];
+
+    return e("div", null,
+      // Tab bar
+      e("div", {
+        style: {
+          display: "flex",
+          gap: 2,
+          borderBottom: "1px solid var(--b1)",
+          marginBottom: 24,
+        }
+      },
+        tabs.map(tab =>
+          e("button", {
+            key: tab.key,
+            onClick: () => setActiveTab(tab.key),
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "10px 16px",
+              background: "none",
+              border: "none",
+              borderBottom: activeTab === tab.key ? "2px solid var(--ac)" : "2px solid transparent",
+              marginBottom: -1,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: activeTab === tab.key ? 500 : 400,
+              color: activeTab === tab.key ? "var(--t1)" : "var(--t3)",
+              borderRadius: 0,
+              transition: "color .12s",
+            }
+          },
+            e("i", { className: `fa-solid ${tab.icon}`, style: { fontSize: 13 } }),
+            tab.label
+          )
+        )
+      ),
+
+      // Active tab content
+      activeTab === "styles"      ? e(StylesTab)      : null,
+      activeTab === "maintenance" ? e(MaintenanceTab) : null,
+    );
   }
 
   // ---------------------------------------------------------------------------
