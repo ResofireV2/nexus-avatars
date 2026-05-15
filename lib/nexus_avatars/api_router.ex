@@ -5,7 +5,6 @@ defmodule NexusAvatars.ApiRouter do
   import Phoenix.Controller
 
   pipeline :api do
-    plug :accepts, ["json"]
     plug :fetch_query_params
   end
 
