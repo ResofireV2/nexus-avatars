@@ -76,53 +76,53 @@ defmodule NexusAvatars.Generator.Mech do
 
   defp archetype_colors(archetype, variation) do
     palettes = [
-      # 0 Cyclops — copper/gold families
+      # 0 Cyclops — copper/gold families — warm dark bg, bright plate
       [
-        %{bg: "#0e0800", plate: "#c07020", plate_mid: "#d08030", accent: "#e09040", accent_bright: "#ffb850", glow: "#ff7010"},
-        %{bg: "#100a00", plate: "#b06018", plate_mid: "#c07028", accent: "#d08038", accent_bright: "#ffa040", glow: "#ff6008"},
-        %{bg: "#0c0600", plate: "#8a4a10", plate_mid: "#a05a20", accent: "#c07030", accent_bright: "#e09040", glow: "#ff6000"},
+        %{bg: "#1a0f00", plate: "#c07020", plate_mid: "#d08030", accent: "#e09040", accent_bright: "#ffb850", glow: "#ff7010"},
+        %{bg: "#1c1000", plate: "#b06018", plate_mid: "#c07028", accent: "#d08038", accent_bright: "#ffa040", glow: "#ff6008"},
+        %{bg: "#150900", plate: "#8a4a10", plate_mid: "#a05a20", accent: "#c07030", accent_bright: "#e09040", glow: "#ff6000"},
       ],
       # 1 Visor — military green families
       [
-        %{bg: "#060e04", plate: "#1a2a10", plate_mid: "#243a18", accent: "#40c020", accent_bright: "#80ff40", glow: "#20a000"},
-        %{bg: "#040c02", plate: "#142008", plate_mid: "#1e3010", accent: "#30a018", accent_bright: "#60e030", glow: "#188000"},
-        %{bg: "#080e04", plate: "#203018", plate_mid: "#2a4020", accent: "#50d030", accent_bright: "#90ff60", glow: "#30b010"},
+        %{bg: "#0a1a06", plate: "#2a4018", plate_mid: "#3a5020", accent: "#40c020", accent_bright: "#80ff40", glow: "#20a000"},
+        %{bg: "#081404", plate: "#1e3010", plate_mid: "#2a4018", accent: "#30a018", accent_bright: "#60e030", glow: "#188000"},
+        %{bg: "#0c1a08", plate: "#304022", plate_mid: "#405030", accent: "#50d030", accent_bright: "#90ff60", glow: "#30b010"},
       ],
       # 2 Insectoid — purple families
       [
-        %{bg: "#0a0418", plate: "#200c3a", plate_mid: "#2c1050", accent: "#8040e0", accent_bright: "#c080ff", glow: "#6020c0"},
-        %{bg: "#080314", plate: "#180830", plate_mid: "#240c42", accent: "#6030c0", accent_bright: "#a060f0", glow: "#5020a0"},
-        %{bg: "#0c0520", plate: "#280e48", plate_mid: "#341458", accent: "#9050f0", accent_bright: "#d090ff", glow: "#7030d0"},
+        %{bg: "#130828", plate: "#32145a", plate_mid: "#3e1870", accent: "#8040e0", accent_bright: "#c080ff", glow: "#6020c0"},
+        %{bg: "#100620", plate: "#280e4a", plate_mid: "#341260", accent: "#6030c0", accent_bright: "#a060f0", glow: "#5020a0"},
+        %{bg: "#170a32", plate: "#3c1868", plate_mid: "#481e78", accent: "#9050f0", accent_bright: "#d090ff", glow: "#7030d0"},
       ],
-      # 3 Damaged — near-black with red damage
+      # 3 Damaged — dark with vivid red — lightened plate so it reads
       [
-        %{bg: "#060606", plate: "#141414", plate_mid: "#1e1e1e", accent: "#dc2626", accent_bright: "#f87171", glow: "#ef4444"},
-        %{bg: "#040404", plate: "#101010", plate_mid: "#1a1a1a", accent: "#b91c1c", accent_bright: "#f87171", glow: "#dc2626"},
-        %{bg: "#080808", plate: "#181818", plate_mid: "#222222", accent: "#ef4444", accent_bright: "#fca5a5", glow: "#f87171"},
+        %{bg: "#0f0f0f", plate: "#2a2a2a", plate_mid: "#363636", accent: "#dc2626", accent_bright: "#f87171", glow: "#ef4444"},
+        %{bg: "#0c0c0c", plate: "#222222", plate_mid: "#2e2e2e", accent: "#b91c1c", accent_bright: "#f87171", glow: "#dc2626"},
+        %{bg: "#121212", plate: "#303030", plate_mid: "#3c3c3c", accent: "#ef4444", accent_bright: "#fca5a5", glow: "#f87171"},
       ],
-      # 4 Ornate — gold/jewel families
+      # 4 Ornate — gold/jewel families — warmer bg
       [
-        %{bg: "#180c00", plate: "#241400", plate_mid: "#2c1800", accent: "#c08010", accent_bright: "#e0a020", glow: "#d09018"},
-        %{bg: "#1a0e00", plate: "#281600", plate_mid: "#341c00", accent: "#d09018", accent_bright: "#f0b030", glow: "#e0a020"},
-        %{bg: "#140a00", plate: "#200e00", plate_mid: "#2a1400", accent: "#a07010", accent_bright: "#c09020", glow: "#b08018"},
+        %{bg: "#251600", plate: "#3c2800", plate_mid: "#4a3000", accent: "#c08010", accent_bright: "#e0a020", glow: "#d09018"},
+        %{bg: "#281800", plate: "#402a00", plate_mid: "#502e00", accent: "#d09018", accent_bright: "#f0b030", glow: "#e0a020"},
+        %{bg: "#201200", plate: "#341c00", plate_mid: "#422200", accent: "#a07010", accent_bright: "#c09020", glow: "#b08018"},
       ],
-      # 5 Skeletal — cold blue families
+      # 5 Skeletal — cold blue families — slightly lightened
       [
-        %{bg: "#020408", plate: "#04080e", plate_mid: "#060c14", accent: "#2050a0", accent_bright: "#4080ff", glow: "#1e3060"},
-        %{bg: "#020306", plate: "#030608", plate_mid: "#040810", accent: "#1840808", accent_bright: "#3060d0", glow: "#142848"},
-        %{bg: "#030510", plate: "#060a18", plate_mid: "#080e20", accent: "#2860c0", accent_bright: "#50a0ff", glow: "#2050a0"},
+        %{bg: "#060c18", plate: "#0e1a30", plate_mid: "#14243e", accent: "#2050a0", accent_bright: "#4080ff", glow: "#1e3060"},
+        %{bg: "#050a14", plate: "#0c1628", plate_mid: "#101e34", accent: "#1840a0", accent_bright: "#3060d0", glow: "#142848"},
+        %{bg: "#070e1e", plate: "#101c34", plate_mid: "#162440", accent: "#2860c0", accent_bright: "#50a0ff", glow: "#2050a0"},
       ],
-      # 6 Artillery — dark iron/red families
+      # 6 Artillery — dark iron/red families — more contrast
       [
-        %{bg: "#0a0808", plate: "#1a1210", plate_mid: "#282018", accent: "#ff2000", accent_bright: "#ff6040", glow: "#cc1800"},
-        %{bg: "#080606", plate: "#141010", plate_mid: "#201818", accent: "#e01800", accent_bright: "#ff4020", glow: "#b01000"},
-        %{bg: "#0c0808", plate: "#1e1410", plate_mid: "#2c221c", accent: "#ff3010", accent_bright: "#ff7050", glow: "#dd2000"},
+        %{bg: "#140e0c", plate: "#2a1e1a", plate_mid: "#362820", accent: "#ff2000", accent_bright: "#ff6040", glow: "#cc1800"},
+        %{bg: "#110c0a", plate: "#221a16", plate_mid: "#2e221c", accent: "#e01800", accent_bright: "#ff4020", glow: "#b01000"},
+        %{bg: "#180e0c", plate: "#301e18", plate_mid: "#3e2820", accent: "#ff3010", accent_bright: "#ff7050", glow: "#dd2000"},
       ],
-      # 7 Android — silver/white families
+      # 7 Android — silver/white families — darkened bg for more contrast
       [
-        %{bg: "#0e0e10", plate: "#d8d8dc", plate_mid: "#e0e0e4", accent: "#9090a8", accent_bright: "#c0c0d0", glow: "#8080a0"},
-        %{bg: "#0c0c0e", plate: "#d0d0d4", plate_mid: "#d8d8dc", accent: "#8080a0", accent_bright: "#b0b0c8", glow: "#707090"},
-        %{bg: "#101012", plate: "#e0e0e4", plate_mid: "#e8e8ec", accent: "#a0a0b8", accent_bright: "#d0d0e0", glow: "#9090b0"},
+        %{bg: "#181820", plate: "#d8d8dc", plate_mid: "#e0e0e4", accent: "#9090a8", accent_bright: "#c0c0d0", glow: "#8080a0"},
+        %{bg: "#14141c", plate: "#d0d0d4", plate_mid: "#d8d8dc", accent: "#8080a0", accent_bright: "#b0b0c8", glow: "#707090"},
+        %{bg: "#1c1c24", plate: "#e0e0e4", plate_mid: "#e8e8ec", accent: "#a0a0b8", accent_bright: "#d0d0e0", glow: "#9090b0"},
       ],
     ]
 
