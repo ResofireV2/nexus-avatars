@@ -4,7 +4,7 @@ defmodule NexusAvatars.MixProject do
   def project do
     [
       app:           :nexus_avatars,
-      version:       "1.2.0",
+      version:       "1.3.0",
       elixir:        "~> 1.17",
       elixirc_paths: ["lib"],
     ]

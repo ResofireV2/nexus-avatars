@@ -18,7 +18,7 @@ defmodule NexusAvatars do
     %{
       slug:        @slug,
       name:        "Nexus Avatars",
-      version:     "1.2.0",
+      version:     "1.3.0",
       description: "Automatically generates unique avatars for every user. Six distinct styles: Mech, Orc, Zombie, Inkblot, Emblem and Snowflake.",
       author:      "resofire",
       homepage:    "https://github.com/resofire/nexus-avatars",
