@@ -340,7 +340,7 @@
 
     // Load current settings
     useEffect(() => {
-      fetch(`/api/v1/extensions/${SLUG}`, {
+      fetch(`/api/v1/admin/extensions/${SLUG}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("nexus_token")}` }
       })
         .then(r => r.json())

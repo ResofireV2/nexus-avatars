@@ -115,7 +115,7 @@ defmodule NexusAvatars.Generator do
   def count_generated_avatars do
     Repo.aggregate(
       from(u in Nexus.Accounts.User,
-        where: not is_nil(u.avatar_url) and like(u.avatar_url, "nxa_%")),
+        where: not is_nil(u.avatar_url) and like(u.avatar_url, "%/nxa_%")),
       :count
     )
   end
@@ -128,14 +128,14 @@ defmodule NexusAvatars.Generator do
     # Collect filenames before clearing DB records
     nxa_filenames =
       from(u in Nexus.Accounts.User,
-        where: not is_nil(u.avatar_url) and like(u.avatar_url, "nxa_%"),
+        where: not is_nil(u.avatar_url) and like(u.avatar_url, "%/nxa_%"),
         select: u.avatar_url)
       |> Repo.all()
 
     # Clear avatar_url for all nxa_ users
     {users_cleared, _} =
       from(u in Nexus.Accounts.User,
-        where: not is_nil(u.avatar_url) and like(u.avatar_url, "nxa_%"))
+        where: not is_nil(u.avatar_url) and like(u.avatar_url, "%/nxa_%"))
       |> Repo.update_all(set: [avatar_url: nil])
 
     # Delete all style records
@@ -145,7 +145,7 @@ defmodule NexusAvatars.Generator do
     files_deleted =
       nxa_filenames
       |> Enum.reduce(0, fn url, acc ->
-        # url is like "nxa_abc123.svg" — strip leading slash if present
+        # url is like "/uploads/extensions/nexus-avatars/avatars/nxa_abc123.svg"
         filename = Path.basename(url)
         path     = Nexus.Extensions.Storage.path(@slug, "avatars/#{filename}")
 
@@ -205,7 +205,7 @@ defmodule NexusAvatars.Generator do
 
     case File.write(path, svg_string) do
       :ok ->
-        {:ok, filename}
+        {:ok, Nexus.Extensions.Storage.url(@slug, "avatars/#{filename}")}
       {:error, reason} ->
         {:error, "Storage write failed: #{inspect(reason)}"}
     end
