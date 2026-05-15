@@ -59,7 +59,7 @@
   // ---------------------------------------------------------------------------
   const STYLES = [
     { key: "mech",      label: "Mech",      icon: "fa-robot"         },
-    { key: "feline",    label: "Feline",    icon: "fa-cat"           },
+    { key: "feline",    label: "Orc",       icon: "fa-skull"         },
     { key: "canine",    label: "Canine",    icon: "fa-dog"           },
     { key: "inkblot",   label: "Inkblot",   icon: "fa-droplet"       },
     { key: "emblem",    label: "Emblem",    icon: "fa-shield-halved" },

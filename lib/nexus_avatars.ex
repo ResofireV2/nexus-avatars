@@ -2,7 +2,7 @@ defmodule NexusAvatars do
   @moduledoc """
   Nexus Avatars — automatically generates unique avatars for every user.
 
-  Six distinct styles: Mech, Feline, Canine, Inkblot, Emblem, Snowflake.
+  Six distinct styles: Mech, Orc, Canine, Inkblot, Emblem, Snowflake.
   Avatars are generated as 256x256 WebP images via SVG + libvips.
   All generated files are prefixed with `nxa_` for clean flush support.
   """
@@ -19,7 +19,7 @@ defmodule NexusAvatars do
       slug:        @slug,
       name:        "Nexus Avatars",
       version:     "1.0.0",
-      description: "Automatically generates unique avatars for every user. Six distinct styles: Mech, Feline, Canine, Inkblot, Emblem and Snowflake.",
+      description: "Automatically generates unique avatars for every user. Six distinct styles: Mech, Orc, Canine, Inkblot, Emblem and Snowflake.",
       author:      "resofire",
       homepage:    "https://github.com/resofire/nexus-avatars",
       categories:  ["community", "utilities"],

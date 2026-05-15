@@ -2,7 +2,7 @@
   "slug":          "nexus-avatars",
   "name":          "Nexus Avatars",
   "version":       "1.0.0",
-  "description":   "Automatically generates unique avatars for every user. Six distinct styles: Mech, Feline, Canine, Inkblot, Emblem and Snowflake.",
+  "description":   "Automatically generates unique avatars for every user. Six distinct styles: Mech, Orc, Canine, Inkblot, Emblem and Snowflake.",
   "author":        "ResofireV2",
   "homepage":      "https://github.com/ResofireV2/nexus-avatars",
   "logo_url":      "/ext/nexus-avatars/assets/logo.webp",
