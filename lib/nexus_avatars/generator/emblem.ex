@@ -29,14 +29,15 @@ defmodule NexusAvatars.Generator.Emblem do
   Canvas: 256x256, viewBox 0 0 256 256. Rasterised to WebP via libvips.
 
   PRNG: splitmix32 via rng/3, matching the Mech generator convention.
+  Bitwise ops use fully-qualified Bitwise.band/bxor/bsr, matching all
+  other generators in this extension (no `use Bitwise` import needed).
+
   Salt map:
     0  -> palette       (16 palettes)
     1  -> background    (6 patterns)
     2  -> crest shape   (12 shapes)
     3  -> icon          (15 icons)
   """
-
-  use Bitwise
 
   @size 256
 
@@ -68,10 +69,10 @@ defmodule NexusAvatars.Generator.Emblem do
     {"#1a0010", "#300020", "#db2777", "#fbcfe8", "#0a0008", "#fbcfe8"},
   ]
 
-  @num_palettes length(@palettes)
+  @num_palettes    length(@palettes)
   @num_backgrounds 6
-  @num_crests 12
-  @num_icons 15
+  @num_crests      12
+  @num_icons       15
 
   # ---------------------------------------------------------------------------
   # Public entry point
@@ -84,10 +85,10 @@ defmodule NexusAvatars.Generator.Emblem do
     {bg, bg_pat, frame, frame_hi, inner, icon_col} =
       Enum.at(@palettes, rng(seed, 0, @num_palettes))
 
-    bg_svg     = background(seed, bg, bg_pat)
-    crest_svg  = crest(seed, frame, frame_hi, inner)
-    {ir, iy}   = crest_inner(seed)
-    icon_svg   = icon(seed, 128, 128 + iy, ir, icon_col, inner)
+    bg_svg    = background(seed, bg, bg_pat)
+    crest_svg = crest(seed, frame, frame_hi, inner)
+    {ir, iy}  = crest_inner(seed)
+    icon_svg  = icon(seed, 128, 128 + iy, ir, icon_col, inner)
 
     [
       ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{@size} #{@size}" width="#{@size}" height="#{@size}">),
@@ -100,20 +101,20 @@ defmodule NexusAvatars.Generator.Emblem do
   end
 
   # ---------------------------------------------------------------------------
-  # PRNG — splitmix32, matching Mech generator convention
-  # Each feature uses a unique salt so all axes are independent.
+  # PRNG — splitmix32, matching Mech generator convention exactly.
+  # Uses fully-qualified Bitwise.band/bxor/bsr — no import required.
   # ---------------------------------------------------------------------------
 
   defp rng(seed, salt, range) do
-    h  = band(bxor(seed, salt * 0x9e3779b9), 0xFFFFFFFF)
-    z0 = band(h  + 0x9e3779b9, 0xFFFFFFFF)
-    z1 = band(bxor(z0, bsr(z0, 16)) * 0x85ebca6b, 0xFFFFFFFF)
-    z2 = band(bxor(z1, bsr(z1, 13)) * 0xc2b2ae35, 0xFFFFFFFF)
-    z3 = band(bxor(z2, bsr(z2, 16)), 0xFFFFFFFF)
-    w0 = band(z3 + 0x9e3779b9, 0xFFFFFFFF)
-    w1 = band(bxor(w0, bsr(w0, 16)) * 0x85ebca6b, 0xFFFFFFFF)
-    w2 = band(bxor(w1, bsr(w1, 13)) * 0xc2b2ae35, 0xFFFFFFFF)
-    w3 = band(bxor(w2, bsr(w2, 16)), 0xFFFFFFFF)
+    h  = Bitwise.band(Bitwise.bxor(seed, salt * 0x9e3779b9), 0xFFFFFFFF)
+    z0 = Bitwise.band(h  + 0x9e3779b9, 0xFFFFFFFF)
+    z1 = Bitwise.band(Bitwise.bxor(z0, Bitwise.bsr(z0, 16)) * 0x85ebca6b, 0xFFFFFFFF)
+    z2 = Bitwise.band(Bitwise.bxor(z1, Bitwise.bsr(z1, 13)) * 0xc2b2ae35, 0xFFFFFFFF)
+    z3 = Bitwise.band(Bitwise.bxor(z2, Bitwise.bsr(z2, 16)), 0xFFFFFFFF)
+    w0 = Bitwise.band(z3 + 0x9e3779b9, 0xFFFFFFFF)
+    w1 = Bitwise.band(Bitwise.bxor(w0, Bitwise.bsr(w0, 16)) * 0x85ebca6b, 0xFFFFFFFF)
+    w2 = Bitwise.band(Bitwise.bxor(w1, Bitwise.bsr(w1, 13)) * 0xc2b2ae35, 0xFFFFFFFF)
+    w3 = Bitwise.band(Bitwise.bxor(w2, Bitwise.bsr(w2, 16)), 0xFFFFFFFF)
     rem(w3, range)
   end
 
@@ -122,8 +123,8 @@ defmodule NexusAvatars.Generator.Emblem do
   # ---------------------------------------------------------------------------
 
   defp background(seed, bg, pat) do
-    base = ~s(<rect width="256" height="256" fill="#{bg}"/>)
-    base <> case rng(seed, 1, @num_backgrounds) do
+    base    = ~s(<rect width="256" height="256" fill="#{bg}"/>)
+    overlay = case rng(seed, 1, @num_backgrounds) do
       0 -> bg_rings(pat)
       1 -> bg_grid(pat)
       2 -> bg_hex(pat)
@@ -131,6 +132,7 @@ defmodule NexusAvatars.Generator.Emblem do
       4 -> bg_dots(pat)
       _ -> ""
     end
+    base <> overlay
   end
 
   defp bg_rings(col) do
@@ -150,10 +152,11 @@ defmodule NexusAvatars.Generator.Emblem do
   end
 
   defp bg_hex(col) do
-    hw = 18; hh = 20
+    hw = 18
+    hh = 20
     for row <- 0..7, col_i <- 0..8 do
-      ox = col_i * hw * 2 + if rem(row, 2) == 1, do: hw, else: 0
-      oy = row * round(hh * 1.5)
+      ox  = col_i * hw * 2 + if rem(row, 2) == 1, do: hw, else: 0
+      oy  = row * round(hh * 1.5)
       pts = hex_pts(ox, oy + 128, hw, hh)
       ~s(<polygon points="#{pts}" fill="none" stroke="#{col}" stroke-width="0.7" opacity="0.2"/>)
     end
@@ -162,13 +165,14 @@ defmodule NexusAvatars.Generator.Emblem do
 
   defp hex_pts(ox, oy, hw, hh) do
     [{0, -hh}, {hw, -div(hh, 2)}, {hw, div(hh, 2)},
-     {0, hh}, {-hw, div(hh, 2)}, {-hw, -div(hh, 2)}]
+     {0, hh},  {-hw, div(hh, 2)}, {-hw, -div(hh, 2)}]
     |> Enum.map_join(" ", fn {dx, dy} -> "#{ox + dx},#{oy + dy}" end)
   end
 
   defp bg_stripes(col) do
     Enum.map_join(-8..16, "", fn i ->
-      x1 = i * 20 - 256; x2 = x1 + 256
+      x1 = i * 20 - 256
+      x2 = x1 + 256
       ~s(<line x1="#{x1}" y1="0" x2="#{x2}" y2="256" stroke="#{col}" stroke-width="7" opacity="0.14"/>)
     end)
   end
@@ -182,7 +186,6 @@ defmodule NexusAvatars.Generator.Emblem do
 
   # ---------------------------------------------------------------------------
   # Crest border shapes (salt 2)
-  # Returns SVG string for the crest only (no icon).
   # ---------------------------------------------------------------------------
 
   defp crest(seed, frame, frame_hi, inner) do
@@ -202,69 +205,57 @@ defmodule NexusAvatars.Generator.Emblem do
     end
   end
 
-  # Returns {inner_radius, y_offset} for icon placement — must match crest/3
+  # Returns {inner_radius, y_offset} — uses same salt/range as crest/4
+  # so both functions always agree on which crest was chosen.
   defp crest_inner(seed) do
     case rng(seed, 2, @num_crests) do
-      0  -> {56,  6}   # shield: slightly high center
-      1  -> {76,  0}   # circle
-      2  -> {74,  0}   # octagon
-      3  -> {60,  0}   # diamond
-      4  -> {58,  0}   # badge
-      5  -> {77,  0}   # ornate ring
-      6  -> {72,  0}   # hexagon
-      7  -> {55,  6}   # pentagon: inscribed circle smaller + shift down
-      8  -> {75,  0}   # dashed ring
-      9  -> {75,  0}   # sunburst
-      10 -> {68,  0}   # starburst
-      _  -> {50,  8}   # double shield
+      0  -> {56,  6}
+      1  -> {76,  0}
+      2  -> {74,  0}
+      3  -> {60,  0}
+      4  -> {58,  0}
+      5  -> {77,  0}
+      6  -> {72,  0}
+      7  -> {55,  6}
+      8  -> {75,  0}
+      9  -> {75,  0}
+      10 -> {68,  0}
+      _  -> {50,  8}
     end
   end
 
   defp crest_shield(f, f2, ic) do
-    """
-    <path d="M128 44 L196 72 L196 148 Q196 200 128 224 Q60 200 60 148 L60 72 Z" fill="#{f}"/>
-    <path d="M128 61 L179 84 L179 146 Q179 192 128 212 Q77 192 77 146 L77 84 Z" fill="#{ic}"/>
-    <path d="M128 44 L196 72 L196 148 Q196 200 128 224 Q60 200 60 148 L60 72 Z" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<path d="M128 44 L196 72 L196 148 Q196 200 128 224 Q60 200 60 148 L60 72 Z" fill="#{f}"/>) <>
+    ~s(<path d="M128 61 L179 84 L179 146 Q179 192 128 212 Q77 192 77 146 L77 84 Z" fill="#{ic}"/>) <>
+    ~s(<path d="M128 44 L196 72 L196 148 Q196 200 128 224 Q60 200 60 148 L60 72 Z" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_circle(f, f2, ic) do
-    """
-    <circle cx="128" cy="128" r="96" fill="#{f}"/>
-    <circle cx="128" cy="128" r="78" fill="#{ic}"/>
-    <circle cx="128" cy="128" r="87" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.55"/>
-    <circle cx="128" cy="128" r="95" fill="none" stroke="#{f2}" stroke-width="1" opacity="0.3"/>
-    """
+    ~s(<circle cx="128" cy="128" r="96" fill="#{f}"/>) <>
+    ~s(<circle cx="128" cy="128" r="78" fill="#{ic}"/>) <>
+    ~s(<circle cx="128" cy="128" r="87" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.55"/>) <>
+    ~s(<circle cx="128" cy="128" r="95" fill="none" stroke="#{f2}" stroke-width="1" opacity="0.3"/>)
   end
 
   defp crest_octagon(f, f2, ic) do
     outer = ngon_pts(8, 96, 128, 128, -22.5)
     mid   = ngon_pts(8, 87, 128, 128, -22.5)
     inner = ngon_pts(8, 78, 128, 128, -22.5)
-    """
-    <polygon points="#{outer}" fill="#{f}"/>
-    <polygon points="#{inner}" fill="#{ic}"/>
-    <polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<polygon points="#{outer}" fill="#{f}"/>) <>
+    ~s(<polygon points="#{inner}" fill="#{ic}"/>) <>
+    ~s(<polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_diamond(f, f2, ic) do
-    outer = "128,32 224,128 128,224 32,128"
-    mid   = "128,41 219,128 128,215 37,128"
-    inner = "128,50 206,128 128,206 50,128"
-    """
-    <polygon points="#{outer}" fill="#{f}"/>
-    <polygon points="#{inner}" fill="#{ic}"/>
-    <polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<polygon points="128,32 224,128 128,224 32,128" fill="#{f}"/>) <>
+    ~s(<polygon points="128,50 206,128 128,206 50,128" fill="#{ic}"/>) <>
+    ~s(<polygon points="128,41 219,128 128,215 37,128" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_badge(f, f2, ic) do
-    """
-    <rect x="36" y="46" width="184" height="164" rx="22" fill="#{f}"/>
-    <rect x="54" y="63" width="148" height="130" rx="13" fill="#{ic}"/>
-    <rect x="45" y="55" width="166" height="146" rx="18" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<rect x="36" y="46" width="184" height="164" rx="22" fill="#{f}"/>) <>
+    ~s(<rect x="54" y="63" width="148" height="130" rx="13" fill="#{ic}"/>) <>
+    ~s(<rect x="45" y="55" width="166" height="146" rx="18" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_ornate(f, f2, ic) do
@@ -273,48 +264,42 @@ defmodule NexusAvatars.Generator.Emblem do
       r1 = 82
       r2 = if rem(i, 6) == 0, do: 97, else: 92
       sw = if rem(i, 6) == 0, do: "2", else: "1"
-      x1 = rf(128 + r1 * :math.cos(a)); y1 = rf(128 + r1 * :math.sin(a))
-      x2 = rf(128 + r2 * :math.cos(a)); y2 = rf(128 + r2 * :math.sin(a))
+      x1 = rf(128 + r1 * :math.cos(a))
+      y1 = rf(128 + r1 * :math.sin(a))
+      x2 = rf(128 + r2 * :math.cos(a))
+      y2 = rf(128 + r2 * :math.sin(a))
       ~s(<line x1="#{x1}" y1="#{y1}" x2="#{x2}" y2="#{y2}" stroke="#{f2}" stroke-width="#{sw}" opacity="0.75"/>)
     end)
-    """
-    <circle cx="128" cy="128" r="98" fill="#{f}"/>
-    <circle cx="128" cy="128" r="80" fill="#{ic}"/>
-    <circle cx="128" cy="128" r="89" fill="none" stroke="#{f}" stroke-width="16"/>
-    <circle cx="128" cy="128" r="97" fill="none" stroke="#{f2}" stroke-width="2"/>
-    <circle cx="128" cy="128" r="80" fill="none" stroke="#{f2}" stroke-width="1.5"/>
-    #{ticks}
-    """
+    ~s(<circle cx="128" cy="128" r="98" fill="#{f}"/>) <>
+    ~s(<circle cx="128" cy="128" r="80" fill="#{ic}"/>) <>
+    ~s(<circle cx="128" cy="128" r="89" fill="none" stroke="#{f}" stroke-width="16"/>) <>
+    ~s(<circle cx="128" cy="128" r="97" fill="none" stroke="#{f2}" stroke-width="2"/>) <>
+    ~s(<circle cx="128" cy="128" r="80" fill="none" stroke="#{f2}" stroke-width="1.5"/>) <>
+    ticks
   end
 
   defp crest_hexagon(f, f2, ic) do
     outer = ngon_pts(6, 96, 128, 128, -90)
     mid   = ngon_pts(6, 87, 128, 128, -90)
     inner = ngon_pts(6, 79, 128, 128, -90)
-    """
-    <polygon points="#{outer}" fill="#{f}"/>
-    <polygon points="#{inner}" fill="#{ic}"/>
-    <polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<polygon points="#{outer}" fill="#{f}"/>) <>
+    ~s(<polygon points="#{inner}" fill="#{ic}"/>) <>
+    ~s(<polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_pentagon(f, f2, ic) do
     outer = ngon_pts(5, 96, 128, 128, -90)
     mid   = ngon_pts(5, 87, 128, 128, -90)
     inner = ngon_pts(5, 79, 128, 128, -90)
-    """
-    <polygon points="#{outer}" fill="#{f}"/>
-    <polygon points="#{inner}" fill="#{ic}"/>
-    <polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<polygon points="#{outer}" fill="#{f}"/>) <>
+    ~s(<polygon points="#{inner}" fill="#{ic}"/>) <>
+    ~s(<polygon points="#{mid}" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_dashed(f, f2, ic) do
-    """
-    <circle cx="128" cy="128" r="78" fill="#{ic}"/>
-    <circle cx="128" cy="128" r="95" fill="none" stroke="#{f}" stroke-width="16" stroke-dasharray="18 9"/>
-    <circle cx="128" cy="128" r="78" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.7"/>
-    """
+    ~s(<circle cx="128" cy="128" r="78" fill="#{ic}"/>) <>
+    ~s(<circle cx="128" cy="128" r="95" fill="none" stroke="#{f}" stroke-width="16" stroke-dasharray="18 9"/>) <>
+    ~s(<circle cx="128" cy="128" r="78" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.7"/>)
   end
 
   defp crest_sunburst(f, f2, ic) do
@@ -322,17 +307,18 @@ defmodule NexusAvatars.Generator.Emblem do
       a  = i / 16.0 * 2.0 * :math.pi()
       a2 = (i + 0.5) / 16.0 * 2.0 * :math.pi()
       a3 = a + :math.pi() / 8.0
-      x1 = rf(128 + 80 * :math.cos(a));  y1 = rf(128 + 80 * :math.sin(a))
-      x2 = rf(128 + 96 * :math.cos(a2)); y2 = rf(128 + 96 * :math.sin(a2))
-      x3 = rf(128 + 80 * :math.cos(a3)); y3 = rf(128 + 80 * :math.sin(a3))
+      x1 = rf(128 + 80 * :math.cos(a))
+      y1 = rf(128 + 80 * :math.sin(a))
+      x2 = rf(128 + 96 * :math.cos(a2))
+      y2 = rf(128 + 96 * :math.sin(a2))
+      x3 = rf(128 + 80 * :math.cos(a3))
+      y3 = rf(128 + 80 * :math.sin(a3))
       ~s(<polygon points="#{x1},#{y1} #{x2},#{y2} #{x3},#{y3}" fill="#{f}"/>)
     end)
-    """
-    <circle cx="128" cy="128" r="96" fill="#{f}" opacity="0.35"/>
-    #{rays}
-    <circle cx="128" cy="128" r="78" fill="#{ic}"/>
-    <circle cx="128" cy="128" r="78" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.6"/>
-    """
+    ~s(<circle cx="128" cy="128" r="96" fill="#{f}" opacity="0.35"/>) <>
+    rays <>
+    ~s(<circle cx="128" cy="128" r="78" fill="#{ic}"/>) <>
+    ~s(<circle cx="128" cy="128" r="78" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.6"/>)
   end
 
   defp crest_starburst(f, f2, ic) do
@@ -341,28 +327,24 @@ defmodule NexusAvatars.Generator.Emblem do
       a = i / 16.0 * 2.0 * :math.pi() - :math.pi() / 16.0
       "#{rf(128 + r * :math.cos(a))},#{rf(128 + r * :math.sin(a))}"
     end)
-    """
-    <polygon points="#{pts}" fill="#{f}"/>
-    <circle cx="128" cy="128" r="72" fill="#{ic}"/>
-    <circle cx="128" cy="128" r="72" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<polygon points="#{pts}" fill="#{f}"/>) <>
+    ~s(<circle cx="128" cy="128" r="72" fill="#{ic}"/>) <>
+    ~s(<circle cx="128" cy="128" r="72" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   defp crest_double_shield(f, f2, ic) do
-    """
-    <path d="M128 40 L200 70 L200 152 Q200 206 128 228 Q56 206 56 152 L56 70 Z" fill="#{f}" opacity="0.4"/>
-    <path d="M128 52 L188 78 L188 150 Q188 198 128 218 Q68 198 68 150 L68 78 Z" fill="#{f}"/>
-    <path d="M128 67 L175 89 L175 148 Q175 190 128 207 Q81 190 81 148 L81 89 Z" fill="#{ic}"/>
-    <path d="M128 52 L188 78 L188 150 Q188 198 128 218 Q68 198 68 150 L68 78 Z" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>
-    """
+    ~s(<path d="M128 40 L200 70 L200 152 Q200 206 128 228 Q56 206 56 152 L56 70 Z" fill="#{f}" opacity="0.4"/>) <>
+    ~s(<path d="M128 52 L188 78 L188 150 Q188 198 128 218 Q68 198 68 150 L68 78 Z" fill="#{f}"/>) <>
+    ~s(<path d="M128 67 L175 89 L175 148 Q175 190 128 207 Q81 190 81 148 L81 89 Z" fill="#{ic}"/>) <>
+    ~s(<path d="M128 52 L188 78 L188 150 Q188 198 128 218 Q68 198 68 150 L68 78 Z" fill="none" stroke="#{f2}" stroke-width="1.5" opacity="0.5"/>)
   end
 
   # ---------------------------------------------------------------------------
   # Icons (salt 3)
   # All defined in unit-circle space: center 0,0, fits within radius 1.0.
-  # Placed with translate(cx, cy) scale(r).
-  # icon_col  : bright accent color — always visible against inner fill
-  # inner_col : crest inner fill — used only for moon crescent bite
+  # Placed via translate(cx, cy) scale(r) — no offset math needed.
+  # icon_col  : bright accent — always visible against inner fill
+  # inner_col : crest inner fill — used by moon/eye/skull for contrast details
   # ---------------------------------------------------------------------------
 
   defp icon(seed, cx, cy, r, icon_col, inner_col) do
@@ -386,92 +368,106 @@ defmodule NexusAvatars.Generator.Emblem do
     ~s(<g transform="translate(#{cx},#{cy}) scale(#{r})">#{body}</g>)
   end
 
-  # ── Star 5-point ────────────────────────────────────────────────
   defp icon_star5(c) do
     pts = star_pts(5, 0.94, 0.40, -:math.pi() / 2)
     ~s(<polygon points="#{pts}" fill="#{c}"/>)
   end
 
-  # ── Star 6-point ────────────────────────────────────────────────
   defp icon_star6(c) do
     pts = star_pts(6, 0.92, 0.44, -:math.pi() / 2)
     ~s(<polygon points="#{pts}" fill="#{c}"/>)
   end
 
-  # ── Flame ────────────────────────────────────────────────────────
   # Shifted up 0.06 so visual center aligns with geometric center.
   defp icon_flame(c) do
     ~s(<path transform="translate(0,-0.06)" d="M0,0.60 Q-0.34,0.42-0.34,0.13 Q-0.34,-0.14-0.18,-0.28 Q-0.20,0.00-0.06,0.02 Q-0.17,-0.24-0.10,-0.52 Q0.02,-0.36 0.03,-0.18 Q0.13,-0.36 0.11,-0.58 Q0.33,-0.40 0.33,-0.04 Q0.40,-0.18 0.37,-0.36 Q0.54,-0.18 0.34,0.22 Q0.24,0.42 0,0.60Z" fill="#{c}"/>)
   end
 
-  # ── Crown ────────────────────────────────────────────────────────
   defp icon_crown(c) do
-    ~s(<path d="M-0.52,0.36 L-0.52,0.08 L-0.30,-0.46 L-0.08,0.06 L0,-0.58 L0.08,0.06 L0.30,-0.46 L0.52,0.08 L0.52,0.36Z" fill="#{c}"/><rect x="-0.52" y="0.28" width="1.04" height="0.16" rx="0.03" fill="#{c}"/>)
+    ~s(<path d="M-0.52,0.36 L-0.52,0.08 L-0.30,-0.46 L-0.08,0.06 L0,-0.58 L0.08,0.06 L0.30,-0.46 L0.52,0.08 L0.52,0.36Z" fill="#{c}"/>) <>
+    ~s(<rect x="-0.52" y="0.28" width="1.04" height="0.16" rx="0.03" fill="#{c}"/>)
   end
 
-  # ── Anchor ────────────────────────────────────────────────────────
   defp icon_anchor(c) do
-    ~s(<g fill="none" stroke="#{c}" stroke-width="0.09" stroke-linecap="round"><circle cx="0" cy="-0.44" r="0.14"/><line x1="0" y1="-0.30" x2="0" y2="0.54"/><line x1="-0.38" y1="-0.02" x2="0.38" y2="-0.02"/><path d="M-0.38,-0.02 Q-0.54,0.32-0.38,0.44 Q-0.20,0.54 0,0.46"/><path d="M0.38,-0.02 Q0.54,0.32 0.38,0.44 Q0.20,0.54 0,0.46"/><line x1="-0.18" y1="-0.52" x2="0.18" y2="-0.52"/><circle cx="0" cy="-0.44" r="0.07" fill="#{c}" stroke="none"/></g>)
+    ~s(<g fill="none" stroke="#{c}" stroke-width="0.09" stroke-linecap="round">) <>
+    ~s(<circle cx="0" cy="-0.44" r="0.14"/>) <>
+    ~s(<line x1="0" y1="-0.30" x2="0" y2="0.54"/>) <>
+    ~s(<line x1="-0.38" y1="-0.02" x2="0.38" y2="-0.02"/>) <>
+    ~s(<path d="M-0.38,-0.02 Q-0.54,0.32-0.38,0.44 Q-0.20,0.54 0,0.46"/>) <>
+    ~s(<path d="M0.38,-0.02 Q0.54,0.32 0.38,0.44 Q0.20,0.54 0,0.46"/>) <>
+    ~s(<line x1="-0.18" y1="-0.52" x2="0.18" y2="-0.52"/>) <>
+    ~s(<circle cx="0" cy="-0.44" r="0.07" fill="#{c}" stroke="none"/>) <>
+    ~s(</g>)
   end
 
-  # ── Lightning bolt ────────────────────────────────────────────────
   defp icon_lightning(c) do
     ~s(<polygon points="0.18,-0.62 -0.32,0.10 0.04,0.10 -0.18,0.62 0.38,-0.14 0.06,-0.14" fill="#{c}"/>)
   end
 
-  # ── Moon (crescent) ───────────────────────────────────────────────
-  # Large bright circle with a smaller inner_col circle offset to carve
-  # the crescent bite. Never disappears regardless of background.
+  # Large bright circle with an inner_col circle offset to carve the crescent.
+  # Always solid and visible regardless of background color.
   defp icon_moon(c, inner_col) do
-    ~s(<circle cx="0" cy="0" r="0.60" fill="#{c}"/><circle cx="0.22" cy="-0.08" r="0.44" fill="#{inner_col}"/>)
+    ~s(<circle cx="0" cy="0" r="0.60" fill="#{c}"/>) <>
+    ~s(<circle cx="0.22" cy="-0.08" r="0.44" fill="#{inner_col}"/>)
   end
 
-  # ── Globe ────────────────────────────────────────────────────────
+  # Globe lines use same icon color at reduced opacity to avoid hardcoded black.
   defp icon_globe(c) do
-    ~s(<circle cx="0" cy="0" r="0.62" fill="#{c}"/><ellipse cx="0" cy="0" rx="0.30" ry="0.62" fill="none" stroke="black" stroke-width="0.04" opacity="0.35"/><ellipse cx="0" cy="0" rx="0.62" ry="0.25" fill="none" stroke="black" stroke-width="0.04" opacity="0.35"/><line x1="-0.62" y1="0" x2="0.62" y2="0" stroke="black" stroke-width="0.04" opacity="0.35"/><line x1="0" y1="-0.62" x2="0" y2="0.62" stroke="black" stroke-width="0.04" opacity="0.35"/>)
+    ~s(<circle cx="0" cy="0" r="0.62" fill="#{c}"/>) <>
+    ~s(<ellipse cx="0" cy="0" rx="0.30" ry="0.62" fill="none" stroke="#{c}" stroke-width="0.06" opacity="0.45"/>) <>
+    ~s(<ellipse cx="0" cy="0" rx="0.62" ry="0.25" fill="none" stroke="#{c}" stroke-width="0.06" opacity="0.45"/>) <>
+    ~s(<line x1="-0.62" y1="0" x2="0.62" y2="0" stroke="#{c}" stroke-width="0.06" opacity="0.45"/>) <>
+    ~s(<line x1="0" y1="-0.62" x2="0" y2="0.62" stroke="#{c}" stroke-width="0.06" opacity="0.45"/>)
   end
 
-  # ── Shield (inner icon) ────────────────────────────────────────────
   defp icon_shield(c) do
     ~s(<path d="M0,-0.60 L0.50,-0.38 L0.50,0.10 Q0.50,0.46 0,0.62 Q-0.50,0.46-0.50,0.10 L-0.50,-0.38Z" fill="#{c}"/>)
   end
 
-  # ── Atom ─────────────────────────────────────────────────────────
   defp icon_atom(c) do
-    ~s(<circle cx="0" cy="0" r="0.14" fill="#{c}"/><ellipse cx="0" cy="0" rx="0.65" ry="0.26" fill="none" stroke="#{c}" stroke-width="0.08"/><ellipse cx="0" cy="0" rx="0.65" ry="0.26" fill="none" stroke="#{c}" stroke-width="0.08" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="0.65" ry="0.26" fill="none" stroke="#{c}" stroke-width="0.08" transform="rotate(120)"/>)
+    ~s(<circle cx="0" cy="0" r="0.14" fill="#{c}"/>) <>
+    ~s(<ellipse cx="0" cy="0" rx="0.65" ry="0.26" fill="none" stroke="#{c}" stroke-width="0.08"/>) <>
+    ~s(<ellipse cx="0" cy="0" rx="0.65" ry="0.26" fill="none" stroke="#{c}" stroke-width="0.08" transform="rotate(60)"/>) <>
+    ~s(<ellipse cx="0" cy="0" rx="0.65" ry="0.26" fill="none" stroke="#{c}" stroke-width="0.08" transform="rotate(120)"/>)
   end
 
-  # ── Tree ─────────────────────────────────────────────────────────
   defp icon_tree(c) do
-    ~s(<polygon points="0,-0.62 0.38,-0.18 0.20,-0.18 0.46,0.18 0.22,0.18 0.46,0.46 -0.46,0.46 -0.22,0.18 -0.46,0.18 -0.20,-0.18 -0.38,-0.18" fill="#{c}"/><rect x="-0.10" y="0.46" width="0.20" height="0.18" fill="#{c}"/>)
+    ~s(<polygon points="0,-0.62 0.38,-0.18 0.20,-0.18 0.46,0.18 0.22,0.18 0.46,0.46 -0.46,0.46 -0.22,0.18 -0.46,0.18 -0.20,-0.18 -0.38,-0.18" fill="#{c}"/>) <>
+    ~s(<rect x="-0.10" y="0.46" width="0.20" height="0.18" fill="#{c}"/>)
   end
 
-  # ── Infinity ─────────────────────────────────────────────────────
   defp icon_infinity(c) do
     ~s(<path d="M0,0 Q-0.14,-0.38-0.44,-0.30 Q-0.70,-0.22-0.70,0 Q-0.70,0.22-0.44,0.30 Q-0.14,0.38 0,0 Q0.14,-0.38 0.44,-0.30 Q0.70,-0.22 0.70,0 Q0.70,0.22 0.44,0.30 Q0.14,0.38 0,0Z" fill="#{c}"/>)
   end
 
-  # ── Eye ──────────────────────────────────────────────────────────
   defp icon_eye(c, inner_col) do
-    ~s(<path d="M-0.70,0 Q-0.20,-0.50 0,-0.50 Q0.20,-0.50 0.70,0 Q0.20,0.50 0,0.50 Q-0.20,0.50-0.70,0Z" fill="#{c}" opacity="0.30"/><path d="M-0.70,0 Q-0.20,-0.50 0,-0.50 Q0.20,-0.50 0.70,0 Q0.20,0.50 0,0.50 Q-0.20,0.50-0.70,0Z" fill="none" stroke="#{c}" stroke-width="0.08"/><circle cx="0" cy="0" r="0.28" fill="#{c}"/><circle cx="0" cy="0" r="0.16" fill="#{inner_col}"/><circle cx="-0.10" cy="-0.08" r="0.06" fill="#{c}" opacity="0.55"/>)
+    ~s(<path d="M-0.70,0 Q-0.20,-0.50 0,-0.50 Q0.20,-0.50 0.70,0 Q0.20,0.50 0,0.50 Q-0.20,0.50-0.70,0Z" fill="#{c}" opacity="0.30"/>) <>
+    ~s(<path d="M-0.70,0 Q-0.20,-0.50 0,-0.50 Q0.20,-0.50 0.70,0 Q0.20,0.50 0,0.50 Q-0.20,0.50-0.70,0Z" fill="none" stroke="#{c}" stroke-width="0.08"/>) <>
+    ~s(<circle cx="0" cy="0" r="0.28" fill="#{c}"/>) <>
+    ~s(<circle cx="0" cy="0" r="0.16" fill="#{inner_col}"/>) <>
+    ~s(<circle cx="-0.10" cy="-0.08" r="0.06" fill="#{c}" opacity="0.55"/>)
   end
 
-  # ── Sword ────────────────────────────────────────────────────────
   defp icon_sword(c) do
-    ~s(<polygon points="0,-0.70 0.06,-0.58 0.05,0.38 -0.05,0.38 -0.06,-0.58" fill="#{c}"/><rect x="-0.32" y="0.30" width="0.64" height="0.10" rx="0.04" fill="#{c}"/><rect x="-0.07" y="0.40" width="0.14" height="0.26" rx="0.03" fill="#{c}" opacity="0.7"/>)
+    ~s(<polygon points="0,-0.70 0.06,-0.58 0.05,0.38 -0.05,0.38 -0.06,-0.58" fill="#{c}"/>) <>
+    ~s(<rect x="-0.32" y="0.30" width="0.64" height="0.10" rx="0.04" fill="#{c}"/>) <>
+    ~s(<rect x="-0.07" y="0.40" width="0.14" height="0.26" rx="0.03" fill="#{c}" opacity="0.7"/>)
   end
 
-  # ── Skull ────────────────────────────────────────────────────────
   defp icon_skull(c, inner_col) do
-    ~s(<path d="M0,-0.56 Q-0.44,-0.56-0.50,-0.26 Q-0.56,-0.02-0.44,0.20 L-0.40,0.34 L0.40,0.34 L0.44,0.20 Q0.56,-0.02 0.50,-0.26 Q0.44,-0.56 0,-0.56Z" fill="#{c}"/><ellipse cx="-0.20" cy="-0.06" rx="0.16" ry="0.18" fill="#{inner_col}" opacity="0.85"/><ellipse cx="0.20" cy="-0.06" rx="0.16" ry="0.18" fill="#{inner_col}" opacity="0.85"/><rect x="-0.20" y="0.34" width="0.13" height="0.22" rx="0.03" fill="#{c}"/><rect x="0.07" y="0.34" width="0.13" height="0.22" rx="0.03" fill="#{c}"/><rect x="-0.20" y="0.34" width="0.40" height="0.08" fill="#{c}"/>)
+    ~s(<path d="M0,-0.56 Q-0.44,-0.56-0.50,-0.26 Q-0.56,-0.02-0.44,0.20 L-0.40,0.34 L0.40,0.34 L0.44,0.20 Q0.56,-0.02 0.50,-0.26 Q0.44,-0.56 0,-0.56Z" fill="#{c}"/>) <>
+    ~s(<ellipse cx="-0.20" cy="-0.06" rx="0.16" ry="0.18" fill="#{inner_col}" opacity="0.85"/>) <>
+    ~s(<ellipse cx="0.20" cy="-0.06" rx="0.16" ry="0.18" fill="#{inner_col}" opacity="0.85"/>) <>
+    ~s(<rect x="-0.20" y="0.34" width="0.13" height="0.22" rx="0.03" fill="#{c}"/>) <>
+    ~s(<rect x="0.07" y="0.34" width="0.13" height="0.22" rx="0.03" fill="#{c}"/>) <>
+    ~s(<rect x="-0.20" y="0.34" width="0.40" height="0.08" fill="#{c}"/>)
   end
 
   # ---------------------------------------------------------------------------
   # Geometry helpers
   # ---------------------------------------------------------------------------
 
-  # n-sided regular polygon centered at (cx, cy) with circumradius r.
-  # rot_deg rotates the starting angle in degrees.
+  # Regular n-gon centered at (cx, cy), circumradius r, rotated by rot_deg.
   defp ngon_pts(n, r, cx, cy, rot_deg) do
     rot_rad = rot_deg * :math.pi() / 180.0
     Enum.map_join(0..(n - 1), " ", fn i ->
@@ -480,7 +476,7 @@ defmodule NexusAvatars.Generator.Emblem do
     end)
   end
 
-  # Star polygon: alternating outer/inner radius, n points.
+  # Star polygon: n points, alternating outer radius ro and inner radius ri.
   defp star_pts(n, ro, ri, rot) do
     Enum.map_join(0..(n * 2 - 1), " ", fn i ->
       r = if rem(i, 2) == 0, do: ro, else: ri
@@ -489,7 +485,9 @@ defmodule NexusAvatars.Generator.Emblem do
     end)
   end
 
-  # Round float to 4 decimal places for compact SVG output
+  # Round to 4 decimal places for compact SVG coordinate output.
   defp fp(v), do: Float.round(v * 1.0, 4)
-  defp rf(v),  do: round(v)
+
+  # Round to nearest integer for pixel-level coordinates.
+  defp rf(v), do: round(v)
 end
