@@ -1,19 +1,33 @@
 defmodule NexusAvatars.Generator.Emblem do
   @moduledoc """
   Emblem avatar style — placeholder pending full implementation.
-  Renders a simple placeholder SVG in the style's color family.
+  Renders a simple geometric placeholder in the green color family.
   """
 
   def render(username) do
-    seed = :erlang.phash2(username)
-    hue  = rem(seed, 360)
+    seed  = :erlang.phash2(username)
+    shift = rem(seed, 40)
+
+    bg  = shade_hex(0x05, 0x2e, 0x16, shift)
+    mid = shade_hex(0x16, 0xa3, 0x4a, shift)
+    hi  = shade_hex(0xbb, 0xf7, 0xd0, shift)
+
     """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-      <rect width="256" height="256" fill="hsl(#{hue},40%,18%)"/>
-      <circle cx="128" cy="128" r="80" fill="hsl(#{hue},60%,40%)" opacity="0.8"/>
-      <text x="128" y="140" font-family="sans-serif" font-size="28" font-weight="700"
-            fill="white" text-anchor="middle" opacity="0.9">Emblem</text>
+      <rect width="256" height="256" fill="#{bg}"/>
+      <circle cx="128" cy="128" r="96" fill="#{mid}"/>
+      <circle cx="128" cy="128" r="52" fill="#{hi}"/>
+      <circle cx="128" cy="128" r="22" fill="#{bg}"/>
     </svg>
     """
   end
+
+  defp shade_hex(r, g, b, shift) do
+    r2 = min(255, r + shift)
+    g2 = min(255, g + shift)
+    b2 = min(255, b + shift)
+    "##{hex2(r2)}#{hex2(g2)}#{hex2(b2)}"
+  end
+
+  defp hex2(n), do: n |> Integer.to_string(16) |> String.pad_leading(2, "0") |> String.upcase()
 end
