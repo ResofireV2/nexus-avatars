@@ -372,7 +372,7 @@
               "Content-Type": "application/json",
               "Authorization": `Bearer ${localStorage.getItem("nexus_token")}`,
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ settings: payload }),
           });
           const d = await r.json();
           if (d.error) throw new Error(d.error);
