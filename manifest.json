@@ -1,23 +1,26 @@
 {
-  "slug":          "nexus-avatars",
-  "name":          "Nexus Avatars",
-  "version":       "1.0.0",
-  "description":   "Automatically generates unique avatars for every user. Six distinct styles: Mech, Orc, Zombie, Inkblot, Emblem and Snowflake.",
-  "author":        "ResofireV2",
-  "homepage":      "https://github.com/ResofireV2/nexus-avatars",
-  "logo_url":      "/ext/nexus-avatars/assets/logo.webp",
-  "banner_url":    "/ext/nexus-avatars/assets/banner.webp",
+  "slug": "nexus-avatars",
+  "name": "Nexus Avatars",
+  "version": "1.2.0",
+  "description": "Automatically generates unique avatars for every user. Six distinct styles: Mech, Orc, Zombie, Inkblot, Emblem and Snowflake.",
+  "author": "ResofireV2",
+  "homepage": "https://github.com/ResofireV2/nexus-avatars",
+  "logo_url": "/ext/nexus-avatars/assets/logo.webp",
+  "banner_url": "/ext/nexus-avatars/assets/banner.webp",
   "js_bundle_url": "/ext/nexus-avatars/assets/nexus-avatars.js",
-  "categories":    ["community", "utilities"],
+  "categories": [
+    "community",
+    "utilities"
+  ],
   "settings_schema": {
     "enabled_styles": {
-      "type":    "string",
-      "label":   "Enabled styles",
+      "type": "string",
+      "label": "Enabled styles",
       "default": "mech,feline,canine,inkblot,emblem,snowflake"
     },
     "random": {
-      "type":    "boolean",
-      "label":   "Random style assignment",
+      "type": "boolean",
+      "label": "Random style assignment",
       "default": true
     }
   }

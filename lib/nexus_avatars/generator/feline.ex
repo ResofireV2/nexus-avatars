@@ -128,7 +128,7 @@ defmodule NexusAvatars.Generator.Feline do
 
     parts = [
       svg_open(),
-      scar_filters(scar_count, scar_seed, seed),
+      "",
       "<rect width=\"200\" height=\"200\" fill=\"#{skin}\"/>",
       hair(hair_type, hair_dk, hair_md, hair_hi),
       war_paint(paint_type, wp_dk, wp_lt, wp_hi),
@@ -176,25 +176,6 @@ defmodule NexusAvatars.Generator.Feline do
 
   defp svg_open do
     ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{@size} #{@size}" width="#{@size}" height="#{@size}">)
-  end
-
-  # ── Scar filters ─────────────────────────────────────────────────────────
-  # Each scar gets a unique feTurbulence seed so no two scars look identical.
-
-  defp scar_filters(count, scar_seed, main_seed) do
-    n = min(count, 3)
-    if n == 0 do
-      "<defs/>"
-    else
-      filters = Enum.map_join(0..(n - 1), "", fn i ->
-        fs = rem(scar_seed + i * 7, 100)
-        "<filter id=\"sf#{main_seed}_#{i}\" x=\"-40%\" y=\"-40%\" width=\"180%\" height=\"180%\">" <>
-        "<feTurbulence type=\"fractalNoise\" baseFrequency=\"0.09\" numOctaves=\"5\" seed=\"#{fs}\" result=\"n\"/>" <>
-        "<feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"9\" xChannelSelector=\"R\" yChannelSelector=\"G\"/>" <>
-        "</filter>"
-      end)
-      "<defs>#{filters}</defs>"
-    end
   end
 
   # ── Hair ─────────────────────────────────────────────────────────────────
@@ -480,17 +461,34 @@ defmodule NexusAvatars.Generator.Feline do
       ""
     else
       n = min(count, 3)
-      Enum.map_join(0..(n - 1), "\n", fn i ->
+      Enum.map_join(0..(n - 1), "", fn i ->
         route_idx = rng(seed, 30 + i, length(@scar_routes))
         [x1, y1, x2, y2] = Enum.at(@scar_routes, route_idx)
         jx = jitter(seed, 40 + i, 14) - 7
         jy = jitter(seed, 50 + i, 10) - 5
-        fi = min(i, 2)
-        "<g filter=\"url(#sf#{seed}_#{fi})\">" <>
-        "<line x1=\"#{x1+jx}\" y1=\"#{y1+jy}\" x2=\"#{x2+jx}\" y2=\"#{y2+jy}\" stroke=\"#050302\" stroke-width=\"4\" stroke-linecap=\"round\"/>" <>
-        "</g>"
+        jagged_scar(seed, i, x1 + jx, y1 + jy, x2 + jx, y2 + jy)
       end)
     end
+  end
+
+  defp jagged_scar(seed, si, x1, y1, x2, y2) do
+    steps = 8
+    dx    = x2 - x1
+    dy    = y2 - y1
+    len   = max(1, :math.sqrt(dx * dx + dy * dy))
+    px    = -dy / len
+    py    =  dx / len
+    points =
+      Enum.map(0..steps, fn k ->
+        t       = k / steps
+        base_x  = x1 + round(dx * t)
+        base_y  = y1 + round(dy * t)
+        perturb = if k == 0 or k == steps, do: 0,
+          else: jitter(seed, si * 20 + k + 200, 13) - 6
+        "#{base_x + round(px * perturb)},#{base_y + round(py * perturb)}"
+      end)
+      |> Enum.join(" ")
+    ~s(<polyline points="#{points}" fill="none" stroke="#050302" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>)
   end
 
   # ── Snout ─────────────────────────────────────────────────────────────────

@@ -125,7 +125,7 @@ defmodule NexusAvatars.Generator.Canine do
 
     parts = [
       svg_open(),
-      wound_filters(nw, w_seed, seed),
+      "",
       ~s(<rect width="200" height="200" fill="#{skin}"/>),
       decomp_spots(seed, spot_count, skin_dd, skin_l),
       skeletal(skel_type),
@@ -175,17 +175,7 @@ defmodule NexusAvatars.Generator.Canine do
 
   # ── Wound filters ─────────────────────────────────────────────────────────
 
-  defp wound_filters(0, _w_seed, _seed), do: "<defs/>"
-  defp wound_filters(nw, w_seed, seed) do
-    filters = Enum.map_join(0..(nw - 1), "", fn i ->
-      fs = rem(w_seed + i * 11, 100)
-      "<filter id=\"wf#{seed}i#{i}\" x=\"-40%\" y=\"-40%\" width=\"180%\" height=\"180%\">" <>
-      "<feTurbulence type=\"fractalNoise\" baseFrequency=\"0.082\" numOctaves=\"5\" seed=\"#{fs}\" result=\"n\"/>" <>
-      "<feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"8\" xChannelSelector=\"R\" yChannelSelector=\"G\"/>" <>
-      "</filter>"
-    end)
-    "<defs>#{filters}</defs>"
-  end
+
 
   # ── Decomp spots ─────────────────────────────────────────────────────────
 
@@ -564,15 +554,43 @@ defmodule NexusAvatars.Generator.Canine do
         ri0 = rng(seed, 70 + i, routes_count)
         ri  = if MapSet.member?(used, ri0), do: rem(ri0 + 1, routes_count), else: ri0
         {x1, y1, x2, y2} = Enum.at(@wound_routes, ri)
-        jx  = jitter(seed, 80 + i, 12) - 6
-        jy  = jitter(seed, 90 + i, 10) - 5
-        fi  = min(i, 3)
-        svg =
-          "<g filter=\"url(#wf#{seed}i#{fi})\">" <>
-          "<line x1=\"#{x1+jx}\" y1=\"#{y1+jy}\" x2=\"#{x2+jx}\" y2=\"#{y2+jy}\" stroke=\"#060302\" stroke-width=\"3.5\" stroke-linecap=\"round\"/>" <>
-          "</g>"
+        jx = jitter(seed, 80 + i, 12) - 6
+        jy = jitter(seed, 90 + i, 10) - 5
+        svg = jagged_line(seed, i, x1 + jx, y1 + jy, x2 + jx, y2 + jy)
         {[svg | acc], MapSet.put(used, ri)}
       end)
     Enum.join(parts, "")
+  end
+
+  # Draws a jagged wound line using manually jittered waypoints.
+  # Divides the line into 8 segments, perturbing each midpoint
+  # perpendicular to the line direction to create an organic scar.
+  defp jagged_line(seed, wi, x1, y1, x2, y2) do
+    steps = 8
+    dx    = x2 - x1
+    dy    = y2 - y1
+    # Perpendicular unit vector scaled to max jitter
+    len   = max(1, :math.sqrt(dx * dx + dy * dy))
+    px    = -dy / len
+    py    =  dx / len
+
+    points =
+      Enum.map(0..steps, fn k ->
+        t    = k / steps
+        base_x = x1 + round(dx * t)
+        base_y = y1 + round(dy * t)
+        # Perturb middle points; leave endpoints clean
+        perturb = if k == 0 or k == steps do
+          0
+        else
+          (jitter(seed, wi * 20 + k + 200, 13) - 6)
+        end
+        jx2 = round(px * perturb)
+        jy2 = round(py * perturb)
+        "#{base_x + jx2},#{base_y + jy2}"
+      end)
+      |> Enum.join(" ")
+
+    ~s(<polyline points="#{points}" fill="none" stroke="#060302" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>)
   end
 end
