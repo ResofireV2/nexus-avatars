@@ -4,13 +4,10 @@ defmodule NexusAvatars.Generator.Snowflake do
 
   Renders a 256x256 hexagonally-symmetric snowflake on a dark background.
 
-  Structure:
-    - One arm is drawn pointing straight up (all coordinates are simple
-      vertical offsets from the canvas center at 128,128).
-    - SVG rotate(N, 128, 128) stamps all arms — perfect symmetry is
-      mathematically guaranteed, no per-arm coordinate math needed.
-    - Branch sub-branches are drawn in the arm's local coordinate space
-      before rotation, so they are symmetric by construction.
+  All arm coordinates are pre-computed by rotating a single arm template
+  around the canvas center. No SVG transforms are used — every element is
+  placed with explicit x,y coordinates, matching the approach used by all
+  other generators in this extension and ensuring full librsvg compatibility.
 
   Variation axes (all seeded from username hash):
     0  -> palette         (8 palettes)
@@ -18,30 +15,26 @@ defmodule NexusAvatars.Generator.Snowflake do
     2  -> arm length      (short to long)
     3  -> arm width       (wispy to meaty)
     4  -> tier count      (2–5 branch tiers)
-    5  -> branch angle    (45°–70° from arm axis)
+    5  -> branch angle    (45–70° from arm axis)
     6  -> tip style       (spike, diamond, hexagon, none)
     7  -> center style    (hexagon medallion or dot)
     8  -> background      (rings or solid)
     9  -> branch decay    (how fast sub-branches shrink toward tip)
-    10 -> branch density  (per-tier presence probability, 0–99 out of 100)
+    10 -> branch density  (per-tier presence probability)
     11 -> sub-branch      (second-order branches on larger snowflakes)
 
-  Fully librsvg-safe: lines, polygons, circles only. No filters, no CSS.
+  Fully librsvg-safe: lines, polygons, circles only.
+  No SVG transforms, no filters, no CSS, no stroke-linecap.
   Canvas: 256x256. Rasterised to WebP via libvips + librsvg.
   PRNG: splitmix32 via rng/3, matching all other generators.
   Bitwise ops fully-qualified — no `use Bitwise` import.
   """
 
-  @size    256
-  @cx      128.0
-  @cy      128.0
+  @size 256
+  @cx   128.0
+  @cy   128.0
 
   # Palettes — {bg, ring, arm, arm_hi, arm_dim}
-  # bg       : canvas fill
-  # ring     : subtle background ring color
-  # arm      : main arm and branch color
-  # arm_hi   : tip crystals and junction dots (brighter)
-  # arm_dim  : second-order sub-branch color (slightly dimmer)
   @palettes [
     {"#030c18", "#071428", "#bae6fd", "#e0f9ff", "#7dd3fc"},
     {"#0a0418", "#130828", "#c4b5fd", "#ede9fe", "#a78bfa"},
@@ -53,7 +46,6 @@ defmodule NexusAvatars.Generator.Snowflake do
     {"#0a0600", "#1a0e00", "#fde68a", "#fefce8", "#f59e0b"},
   ]
 
-  # Arm count table — weighted heavily toward 6 (the classic snowflake)
   @arm_counts [6, 6, 6, 6, 6, 8, 8, 12]
 
   @num_palettes  length(@palettes)
@@ -82,12 +74,12 @@ defmodule NexusAvatars.Generator.Snowflake do
     density     = max(40, rng(seed, 10, 100))
     sub_branch  = rng(seed, 11, 2) == 0 and tier_count >= 4
 
-    bg_svg      = background(bg, ring_col, bg_rings)
-    arms_svg    = arms(seed, arm_count, arm_len, arm_width,
-                       tier_count, branch_deg, tip_style,
-                       decay, density, sub_branch,
-                       arm_col, hi_col, dim_col)
-    center_svg  = center(center_hex, arm_width, hi_col, bg)
+    bg_svg     = background(bg, ring_col, bg_rings)
+    arms_svg   = all_arms(seed, arm_count, arm_len, arm_width,
+                          tier_count, branch_deg, tip_style,
+                          decay, density, sub_branch,
+                          arm_col, hi_col, dim_col)
+    center_svg = center(center_hex, hi_col, bg)
 
     [
       ~s[<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{@size} #{@size}" width="#{@size}" height="#{@size}">],
@@ -100,10 +92,7 @@ defmodule NexusAvatars.Generator.Snowflake do
   end
 
   # ---------------------------------------------------------------------------
-  # PRNG — splitmix32, identical to Mech/Emblem generators.
-  # Fully-qualified Bitwise calls, no import.
-  # rng/3  -> integer in [0, range)
-  # rngf/4 -> float in [lo, hi)
+  # PRNG — splitmix32. Fully-qualified Bitwise, no import.
   # ---------------------------------------------------------------------------
 
   defp rng(seed, salt, range) do
@@ -120,8 +109,20 @@ defmodule NexusAvatars.Generator.Snowflake do
   end
 
   defp rngf(seed, salt, lo, hi) do
-    t = rng(seed, salt, 100_000)
-    lo + (hi - lo) * t / 100_000.0
+    lo + (hi - lo) * rng(seed, salt, 100_000) / 100_000.0
+  end
+
+  # ---------------------------------------------------------------------------
+  # Rotate a point (px, py) by deg degrees around (@cx, @cy)
+  # ---------------------------------------------------------------------------
+
+  defp rot(px, py, deg) do
+    rad = deg * :math.pi() / 180.0
+    dx  = px - @cx
+    dy  = py - @cy
+    rx  = dx * :math.cos(rad) - dy * :math.sin(rad)
+    ry  = dx * :math.sin(rad) + dy * :math.cos(rad)
+    {fp(@cx + rx), fp(@cy + ry)}
   end
 
   # ---------------------------------------------------------------------------
@@ -134,7 +135,7 @@ defmodule NexusAvatars.Generator.Snowflake do
       Enum.map_join([0.12, 0.22, 0.32, 0.42, 0.50], "", fn frac ->
         r  = fp(@size * frac)
         sw = fp(@size * 0.055)
-        ~s[<circle cx="#{@cx}" cy="#{@cy}" r="#{r}" fill="none" stroke="#{ring_col}" stroke-width="#{sw}" opacity="0.85"/>]
+        ~s[<circle cx="#{round(@cx)}" cy="#{round(@cy)}" r="#{r}" fill="none" stroke="#{ring_col}" stroke-width="#{sw}"/>]
       end)
     else
       ""
@@ -143,45 +144,46 @@ defmodule NexusAvatars.Generator.Snowflake do
   end
 
   # ---------------------------------------------------------------------------
-  # Arms — stamp one arm template at each rotation angle
+  # All arms — one arm template rotated to each angle, coordinates
+  # pre-computed explicitly. No SVG transform attributes used.
   # ---------------------------------------------------------------------------
 
-  defp arms(seed, arm_count, arm_len, arm_width,
-            tier_count, branch_deg, tip_style,
-            decay, density, sub_branch,
-            arm_col, hi_col, dim_col) do
-    arm_svg = one_arm(seed, arm_len, arm_width, tier_count, branch_deg,
-                      tip_style, decay, density, sub_branch,
-                      arm_col, hi_col, dim_col)
+  defp all_arms(seed, arm_count, arm_len, arm_width,
+                tier_count, branch_deg, tip_style,
+                decay, density, sub_branch,
+                arm_col, hi_col, dim_col) do
+    step_deg = 360.0 / arm_count
 
     Enum.map_join(0..(arm_count - 1), "", fn i ->
-      deg = i * div(360, arm_count)
-      ~s[<g transform="rotate(#{deg},#{round(@cx)},#{round(@cy)})">] <> arm_svg <> "</g>"
+      deg = i * step_deg
+      one_arm(seed, deg, arm_len, arm_width, tier_count, branch_deg,
+              tip_style, decay, density, sub_branch,
+              arm_col, hi_col, dim_col)
     end)
   end
 
   # ---------------------------------------------------------------------------
-  # One arm — drawn pointing straight up from center.
-  # All x coordinates are relative to @cx (128), y decreases toward tip.
-  # The tip is at y = @cy - arm_len.
+  # One arm — all points rotated from the upward template.
+  # Template: center=(128,128), tip=(128, 128-arm_len), pointing straight up.
   # ---------------------------------------------------------------------------
 
-  defp one_arm(seed, arm_len, arm_width, tier_count, branch_deg,
+  defp one_arm(seed, deg, arm_len, arm_width, tier_count, branch_deg,
                tip_style, decay, density, sub_branch,
                arm_col, hi_col, dim_col) do
-    tip_y  = fp(@cy - arm_len)
     sw     = fp(arm_width)
-    cx_r   = round(@cx)
+    tip_y0 = @cy - arm_len                    # unrotated tip y
+    {tx, ty} = rot(@cx, tip_y0, deg)
+    cx_r = round(@cx)
+    cy_r = round(@cy)
 
-    # Main shaft
-    shaft = ~s[<line x1="#{cx_r}" y1="#{round(@cy)}" x2="#{cx_r}" y2="#{tip_y}" stroke="#{arm_col}" stroke-width="#{sw}"/>]
+    # Main shaft — from center to rotated tip
+    shaft = ~s[<line x1="#{cx_r}" y1="#{cy_r}" x2="#{fp(tx)}" y2="#{fp(ty)}" stroke="#{arm_col}" stroke-width="#{sw}"/>]
 
     # Branch tiers
     branches = Enum.map_join(0..(tier_count - 1), "", fn t ->
       frac = (t + 1) / (tier_count + 1)
-      by   = @cy - arm_len * frac
+      by0  = @cy - arm_len * frac             # unrotated branch root y
 
-      # Per-tier density gate — tier 0 always fires, higher tiers are gated
       has_branch = t == 0 or rng(seed, 20 + t * 7, 100) < density
       if not has_branch do
         ""
@@ -190,46 +192,58 @@ defmodule NexusAvatars.Generator.Snowflake do
         branch_w   = fp(arm_width * (0.35 + 0.45 * (1.0 - frac)))
         ang_rad    = branch_deg * :math.pi() / 180.0
 
-        # Left and right branch endpoints (symmetric about arm axis)
-        lx = fp(@cx - branch_len * :math.sin(ang_rad))
-        ly = fp(by   - branch_len * :math.cos(ang_rad))
-        rx = fp(@cx + branch_len * :math.sin(ang_rad))
-        ry = fp(by   - branch_len * :math.cos(ang_rad))
-        by_r = fp(by)
+        # Unrotated branch endpoints (left and right, symmetric)
+        lx0 = @cx - branch_len * :math.sin(ang_rad)
+        ly0 = by0  - branch_len * :math.cos(ang_rad)
+        rx0 = @cx + branch_len * :math.sin(ang_rad)
+        ry0 = by0  - branch_len * :math.cos(ang_rad)
 
-        left_line  = ~s[<line x1="#{cx_r}" y1="#{by_r}" x2="#{lx}" y2="#{ly}" stroke="#{arm_col}" stroke-width="#{branch_w}"/>]
-        right_line = ~s[<line x1="#{cx_r}" y1="#{by_r}" x2="#{rx}" y2="#{ry}" stroke="#{arm_col}" stroke-width="#{branch_w}"/>]
+        # Rotate all points
+        {brx, bry}  = rot(@cx, by0, deg)      # branch root
+        {blx, bly}  = rot(lx0, ly0, deg)      # left tip
+        {brx2, bry2} = rot(rx0, ry0, deg)     # right tip
 
-        # Junction dot
+        left_line  = ~s[<line x1="#{fp(brx)}" y1="#{fp(bry)}" x2="#{fp(blx)}" y2="#{fp(bly)}" stroke="#{arm_col}" stroke-width="#{branch_w}"/>]
+        right_line = ~s[<line x1="#{fp(brx)}" y1="#{fp(bry)}" x2="#{fp(brx2)}" y2="#{fp(bry2)}" stroke="#{arm_col}" stroke-width="#{branch_w}"/>]
         dot_r = fp(branch_w * 0.9)
-        dot   = ~s[<circle cx="#{cx_r}" cy="#{by_r}" r="#{dot_r}" fill="#{hi_col}"/>]
+        dot   = ~s[<circle cx="#{fp(brx)}" cy="#{fp(bry)}" r="#{dot_r}" fill="#{hi_col}"/>]
 
-        # Optional second-order sub-branches (on larger, denser snowflakes)
         sub = if sub_branch and t < tier_count - 1 do
           has_sub = rng(seed, 50 + t * 11, 100) < div(density * 70, 100)
           if has_sub do
             sub_len  = fp(branch_len * 0.38)
             sub_w    = fp(branch_w * 0.5)
             sub_ang  = ang_rad * 0.65
-            # Midpoint along left branch
             mid_frac = 0.55
-            mlx = fp(@cx + (lx - @cx) * mid_frac)
-            mly = fp(by   + (ly - by)  * mid_frac)
-            mrx = fp(@cx + (rx - @cx) * mid_frac)
-            mry = fp(by   + (ry - by)  * mid_frac)
-            # Sub-branches angle outward perpendicular to the branch
-            sl1x = fp(mlx - sub_len * :math.sin(sub_ang + 0.4))
-            sl1y = fp(mly - sub_len * :math.cos(sub_ang + 0.4))
-            sl2x = fp(mlx + sub_len * :math.sin(sub_ang - 0.2))
-            sl2y = fp(mly - sub_len * :math.cos(sub_ang - 0.2))
-            sr1x = fp(mrx + sub_len * :math.sin(sub_ang + 0.4))
-            sr1y = fp(mry - sub_len * :math.cos(sub_ang + 0.4))
-            sr2x = fp(mrx - sub_len * :math.sin(sub_ang - 0.2))
-            sr2y = fp(mry - sub_len * :math.cos(sub_ang - 0.2))
-            ~s[<line x1="#{mlx}" y1="#{mly}" x2="#{sl1x}" y2="#{sl1y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
-            ~s[<line x1="#{mlx}" y1="#{mly}" x2="#{sl2x}" y2="#{sl2y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
-            ~s[<line x1="#{mrx}" y1="#{mry}" x2="#{sr1x}" y2="#{sr1y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
-            ~s[<line x1="#{mrx}" y1="#{mry}" x2="#{sr2x}" y2="#{sr2y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>]
+
+            # Unrotated midpoints along each branch
+            mlx0 = @cx  + (lx0 - @cx)  * mid_frac
+            mly0 = by0  + (ly0 - by0)  * mid_frac
+            mrx0 = @cx  + (rx0 - @cx)  * mid_frac
+            mry0 = by0  + (ry0 - by0)  * mid_frac
+
+            # Unrotated sub-branch endpoints
+            sl1x0 = mlx0 - sub_len * :math.sin(sub_ang + 0.4)
+            sl1y0 = mly0 - sub_len * :math.cos(sub_ang + 0.4)
+            sl2x0 = mlx0 + sub_len * :math.sin(sub_ang - 0.2)
+            sl2y0 = mly0 - sub_len * :math.cos(sub_ang - 0.2)
+            sr1x0 = mrx0 + sub_len * :math.sin(sub_ang + 0.4)
+            sr1y0 = mry0 - sub_len * :math.cos(sub_ang + 0.4)
+            sr2x0 = mrx0 - sub_len * :math.sin(sub_ang - 0.2)
+            sr2y0 = mry0 - sub_len * :math.cos(sub_ang - 0.2)
+
+            # Rotate all sub-branch points
+            {mlx, mly}   = rot(mlx0, mly0, deg)
+            {mrx, mry}   = rot(mrx0, mry0, deg)
+            {sl1x, sl1y} = rot(sl1x0, sl1y0, deg)
+            {sl2x, sl2y} = rot(sl2x0, sl2y0, deg)
+            {sr1x, sr1y} = rot(sr1x0, sr1y0, deg)
+            {sr2x, sr2y} = rot(sr2x0, sr2y0, deg)
+
+            ~s[<line x1="#{fp(mlx)}" y1="#{fp(mly)}" x2="#{fp(sl1x)}" y2="#{fp(sl1y)}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
+            ~s[<line x1="#{fp(mlx)}" y1="#{fp(mly)}" x2="#{fp(sl2x)}" y2="#{fp(sl2y)}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
+            ~s[<line x1="#{fp(mrx)}" y1="#{fp(mry)}" x2="#{fp(sr1x)}" y2="#{fp(sr1y)}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
+            ~s[<line x1="#{fp(mrx)}" y1="#{fp(mry)}" x2="#{fp(sr2x)}" y2="#{fp(sr2y)}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>]
           else
             ""
           end
@@ -241,64 +255,66 @@ defmodule NexusAvatars.Generator.Snowflake do
       end
     end)
 
-    # Tip crystal
-    tip = tip_crystal(tip_style, tip_y, arm_width, hi_col)
+    tip = tip_crystal(tip_style, deg, tip_y0, arm_width, hi_col)
 
     shaft <> branches <> tip
   end
 
   # ---------------------------------------------------------------------------
-  # Tip crystals
+  # Tip crystals — all points rotated from upward template
   # ---------------------------------------------------------------------------
 
-  defp tip_crystal(0, tip_y, arm_width, col) do
+  defp tip_crystal(0, deg, tip_y0, arm_width, col) do
     # Spike — upward triangle
-    ts   = fp(arm_width * 3.5)
-    cx_r = round(@cx)
-    ~s[<polygon points="#{cx_r},#{fp(tip_y - ts)} #{fp(@cx - ts * 0.5)},#{fp(tip_y + ts * 0.4)} #{fp(@cx + ts * 0.5)},#{fp(tip_y + ts * 0.4)}" fill="#{col}"/>]
+    ts = arm_width * 3.5
+    {ax, ay} = rot(@cx,        tip_y0 - ts, deg)
+    {bx, by} = rot(@cx - ts * 0.5, tip_y0 + ts * 0.4, deg)
+    {cx, cy} = rot(@cx + ts * 0.5, tip_y0 + ts * 0.4, deg)
+    ~s[<polygon points="#{fp(ax)},#{fp(ay)} #{fp(bx)},#{fp(by)} #{fp(cx)},#{fp(cy)}" fill="#{col}"/>]
   end
 
-  defp tip_crystal(1, tip_y, arm_width, col) do
-    # Diamond — 4-point
-    ts   = fp(arm_width * 3.5)
-    cx_r = round(@cx)
-    ~s[<polygon points="#{cx_r},#{fp(tip_y - ts)} #{fp(@cx + ts * 0.6)},#{fp(tip_y)} #{cx_r},#{fp(tip_y + ts)} #{fp(@cx - ts * 0.6)},#{fp(tip_y)}" fill="#{col}"/>]
+  defp tip_crystal(1, deg, tip_y0, arm_width, col) do
+    # Diamond — 4 points
+    ts = arm_width * 3.5
+    {ax, ay} = rot(@cx,          tip_y0 - ts, deg)
+    {bx, by} = rot(@cx + ts * 0.6, tip_y0,   deg)
+    {cx, cy} = rot(@cx,          tip_y0 + ts, deg)
+    {dx, dy} = rot(@cx - ts * 0.6, tip_y0,   deg)
+    ~s[<polygon points="#{fp(ax)},#{fp(ay)} #{fp(bx)},#{fp(by)} #{fp(cx)},#{fp(cy)} #{fp(dx)},#{fp(dy)}" fill="#{col}"/>]
   end
 
-  defp tip_crystal(2, tip_y, arm_width, col) do
-    # Small hexagon
-    hr  = fp(arm_width * 2.8)
+  defp tip_crystal(2, deg, tip_y0, arm_width, col) do
+    # Small hexagon at tip
+    hr  = arm_width * 2.8
     pts = Enum.map_join(0..5, " ", fn i ->
-      a = i / 6.0 * 2.0 * :math.pi() - :math.pi() / 6.0
-      "#{fp(@cx + hr * :math.cos(a))},#{fp(tip_y + hr * :math.sin(a))}"
+      a    = i / 6.0 * 2.0 * :math.pi() - :math.pi() / 6.0
+      px0  = @cx  + hr * :math.cos(a)
+      py0  = tip_y0 + hr * :math.sin(a)
+      {rx, ry} = rot(px0, py0, deg)
+      "#{fp(rx)},#{fp(ry)}"
     end)
     ~s[<polygon points="#{pts}" fill="#{col}"/>]
   end
 
-  defp tip_crystal(_, _tip_y, _arm_width, _col) do
-    # Style 3 — no tip ornament, just the rounded linecap
-    ""
-  end
+  defp tip_crystal(_, _deg, _tip_y0, _arm_width, _col), do: ""
 
   # ---------------------------------------------------------------------------
   # Center decoration
   # ---------------------------------------------------------------------------
 
-  defp center(true, _arm_width, hi_col, bg) do
-    # Hexagon medallion
-    cr  = fp(@size * 0.055)
+  defp center(true, hi_col, bg) do
+    cr  = @size * 0.055
     pts = Enum.map_join(0..5, " ", fn i ->
       a = i / 6.0 * 2.0 * :math.pi() - :math.pi() / 6.0
       "#{fp(@cx + cr * :math.cos(a))},#{fp(@cy + cr * :math.sin(a))}"
     end)
     sw = fp(@size * 0.006)
-    ~s[<polygon points="#{pts}" fill="#{hi_col}" opacity="0.9"/>] <>
+    ~s[<polygon points="#{pts}" fill="#{hi_col}"/>] <>
     ~s[<polygon points="#{pts}" fill="none" stroke="#{bg}" stroke-width="#{sw}"/>] <>
     ~s[<circle cx="#{round(@cx)}" cy="#{round(@cy)}" r="#{fp(@size * 0.018)}" fill="#{bg}"/>]
   end
 
-  defp center(false, _arm_width, hi_col, bg) do
-    # Simple bright dot
+  defp center(false, hi_col, bg) do
     ~s[<circle cx="#{round(@cx)}" cy="#{round(@cy)}" r="#{fp(@size * 0.038)}" fill="#{hi_col}"/>] <>
     ~s[<circle cx="#{round(@cx)}" cy="#{round(@cy)}" r="#{fp(@size * 0.016)}" fill="#{bg}"/>]
   end
@@ -307,6 +323,5 @@ defmodule NexusAvatars.Generator.Snowflake do
   # Helpers
   # ---------------------------------------------------------------------------
 
-  # Round float to 2 decimal places for compact SVG coordinate output.
   defp fp(v), do: Float.round(v * 1.0, 2)
 end
