@@ -323,5 +323,8 @@ defmodule NexusAvatars.Generator.Snowflake do
   # Helpers
   # ---------------------------------------------------------------------------
 
-  defp fp(v), do: Float.round(v * 1.0, 2)
+  defp fp(v) do
+    rounded = Float.round(v * 1.0, 2)
+    if rounded == trunc(rounded) * 1.0, do: trunc(rounded), else: rounded
+  end
 end
