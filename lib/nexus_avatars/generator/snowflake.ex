@@ -174,7 +174,7 @@ defmodule NexusAvatars.Generator.Snowflake do
     cx_r   = round(@cx)
 
     # Main shaft
-    shaft = ~s[<line x1="#{cx_r}" y1="#{round(@cy)}" x2="#{cx_r}" y2="#{tip_y}" stroke="#{arm_col}" stroke-width="#{sw}" stroke-linecap="round"/>]
+    shaft = ~s[<line x1="#{cx_r}" y1="#{round(@cy)}" x2="#{cx_r}" y2="#{tip_y}" stroke="#{arm_col}" stroke-width="#{sw}"/>]
 
     # Branch tiers
     branches = Enum.map_join(0..(tier_count - 1), "", fn t ->
@@ -197,8 +197,8 @@ defmodule NexusAvatars.Generator.Snowflake do
         ry = fp(by   - branch_len * :math.cos(ang_rad))
         by_r = fp(by)
 
-        left_line  = ~s[<line x1="#{cx_r}" y1="#{by_r}" x2="#{lx}" y2="#{ly}" stroke="#{arm_col}" stroke-width="#{branch_w}" stroke-linecap="round"/>]
-        right_line = ~s[<line x1="#{cx_r}" y1="#{by_r}" x2="#{rx}" y2="#{ry}" stroke="#{arm_col}" stroke-width="#{branch_w}" stroke-linecap="round"/>]
+        left_line  = ~s[<line x1="#{cx_r}" y1="#{by_r}" x2="#{lx}" y2="#{ly}" stroke="#{arm_col}" stroke-width="#{branch_w}"/>]
+        right_line = ~s[<line x1="#{cx_r}" y1="#{by_r}" x2="#{rx}" y2="#{ry}" stroke="#{arm_col}" stroke-width="#{branch_w}"/>]
 
         # Junction dot
         dot_r = fp(branch_w * 0.9)
@@ -226,10 +226,10 @@ defmodule NexusAvatars.Generator.Snowflake do
             sr1y = fp(mry - sub_len * :math.cos(sub_ang + 0.4))
             sr2x = fp(mrx - sub_len * :math.sin(sub_ang - 0.2))
             sr2y = fp(mry - sub_len * :math.cos(sub_ang - 0.2))
-            ~s[<line x1="#{mlx}" y1="#{mly}" x2="#{sl1x}" y2="#{sl1y}" stroke="#{dim_col}" stroke-width="#{sub_w}" stroke-linecap="round"/>] <>
-            ~s[<line x1="#{mlx}" y1="#{mly}" x2="#{sl2x}" y2="#{sl2y}" stroke="#{dim_col}" stroke-width="#{sub_w}" stroke-linecap="round"/>] <>
-            ~s[<line x1="#{mrx}" y1="#{mry}" x2="#{sr1x}" y2="#{sr1y}" stroke="#{dim_col}" stroke-width="#{sub_w}" stroke-linecap="round"/>] <>
-            ~s[<line x1="#{mrx}" y1="#{mry}" x2="#{sr2x}" y2="#{sr2y}" stroke="#{dim_col}" stroke-width="#{sub_w}" stroke-linecap="round"/>]
+            ~s[<line x1="#{mlx}" y1="#{mly}" x2="#{sl1x}" y2="#{sl1y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
+            ~s[<line x1="#{mlx}" y1="#{mly}" x2="#{sl2x}" y2="#{sl2y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
+            ~s[<line x1="#{mrx}" y1="#{mry}" x2="#{sr1x}" y2="#{sr1y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>] <>
+            ~s[<line x1="#{mrx}" y1="#{mry}" x2="#{sr2x}" y2="#{sr2y}" stroke="#{dim_col}" stroke-width="#{sub_w}"/>]
           else
             ""
           end
