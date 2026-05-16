@@ -79,7 +79,7 @@ defmodule NexusAvatars.Generator.Snowflake do
     center_hex  = rng(seed, 7, 3) > 0
     bg_rings    = rng(seed, 8, 2) == 0
     decay       = rngf(seed, 9, 0.45, 0.70)
-    density     = rng(seed, 10, 100)
+    density     = max(40, rng(seed, 10, 100))
     sub_branch  = rng(seed, 11, 2) == 0 and tier_count >= 4
 
     bg_svg      = background(bg, ring_col, bg_rings)
@@ -181,8 +181,8 @@ defmodule NexusAvatars.Generator.Snowflake do
       frac = (t + 1) / (tier_count + 1)
       by   = @cy - arm_len * frac
 
-      # Per-tier density gate — use salt 20+t so each tier is independent
-      has_branch = rng(seed, 20 + t * 7, 100) < density
+      # Per-tier density gate — tier 0 always fires, higher tiers are gated
+      has_branch = t == 0 or rng(seed, 20 + t * 7, 100) < density
       if not has_branch do
         ""
       else
