@@ -741,7 +741,7 @@
     label:     "Avatar Style",
     component: AvatarStyleWidget,
     priority:  60,
-    pages:     "global",
+    pages:     ["/profile"],
   });
 
   // ---------------------------------------------------------------------------
