@@ -19,8 +19,15 @@
     { "event": "user_registered", "priority": 50 }
   ],
 
-  "slots": [
-    "profile_sidebar"
+  "slots": [],
+
+  "right_widgets": [
+    {
+      "id":       "nexus-avatars-style-picker",
+      "label":    "Avatar Style",
+      "scope":    { "corePages": ["profile"] },
+      "priority": 60
+    }
   ],
 
   "admin_panel": {
@@ -29,7 +36,6 @@
   },
 
   "routes": [],
-  "right_widgets": [],
   "toolbar_buttons": [],
   "profile_tabs": [],
   "digest_sections": [],
