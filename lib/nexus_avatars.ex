@@ -17,7 +17,7 @@ defmodule NexusAvatars do
   @impl true
   def migrations do
     [
-      NexusAvatars.Migrations.V20260515000001CreateUserStyles,
+      NexusAvatars.Migrations.V20260524000001CreateUserStyles,
     ]
   end
 
@@ -62,5 +62,19 @@ defmodule NexusAvatars do
   def on_uninstall do
     NexusAvatars.Generator.flush_all()
     :ok
+  end
+
+  # ---------------------------------------------------------------------------
+  # Helpers
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Fetches the current extension settings from the DB.
+  Used by callers that run outside a hook dispatch (Oban jobs, API controllers)
+  and therefore cannot receive settings as a callback argument.
+  """
+  def load_settings do
+    ext = Nexus.Extensions.get_extension_by_slug("nexus-avatars")
+    if ext, do: ext.settings || %{}, else: %{}
   end
 end
