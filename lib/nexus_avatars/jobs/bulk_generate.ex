@@ -1,13 +1,13 @@
 defmodule NexusAvatars.Jobs.BulkGenerate do
   @moduledoc """
   Oban worker that generates avatars for all users who currently have no
-  avatar_url set. Runs in batches of 50 to avoid blocking the media queue.
+  avatar_url set. Runs in batches of 50 via the extensions queue.
 
   Enqueued by the admin panel "Generate" button. Reports progress via a
   simple counter stored in the extension settings so the JS panel can poll.
   """
 
-  use Oban.Worker, queue: :media, max_attempts: 3
+  use Oban.Worker, queue: :extensions, max_attempts: 3
 
   require Logger
 
