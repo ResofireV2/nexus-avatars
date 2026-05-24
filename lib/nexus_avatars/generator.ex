@@ -212,7 +212,7 @@ defmodule NexusAvatars.Generator do
 
     with :ok <- File.write(tmp_path, svg_string),
          {:ok, image} <- Image.open(tmp_path, []),
-         {:ok, image} <- Image.thumbnail(image, @size, resize: :force),
+         {:ok, image} <- Image.thumbnail(image, @size, fit: :cover),
          {:ok, _}     <- Image.write(image, webp_path, quality: 90, suffix: ".webp") do
       File.rm(tmp_path)
       {:ok, Nexus.Extensions.Storage.url(@slug, "avatars/#{webp_filename}")}
