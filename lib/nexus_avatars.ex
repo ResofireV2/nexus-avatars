@@ -17,7 +17,7 @@ defmodule NexusAvatars do
   @impl true
   def migrations do
     [
-      NexusAvatars.Migrations.V20260524000001CreateUserStyles,
+      NexusAvatars.Migrations.V1CreateUserStyles,
     ]
   end
 
