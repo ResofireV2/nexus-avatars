@@ -36,8 +36,8 @@
   // ---------------------------------------------------------------------------
   const STYLES = [
     { key: "mech",      label: "Mech"      },
-    { key: "feline",    label: "Feline"    },
-    { key: "canine",    label: "Canine"    },
+    { key: "feline",    label: "Orc"       },
+    { key: "canine",    label: "Zombie"    },
     { key: "inkblot",   label: "Inkblot"   },
     { key: "emblem",    label: "Emblem"    },
     { key: "snowflake", label: "Snowflake" },
