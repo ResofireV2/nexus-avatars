@@ -33,8 +33,8 @@ Install via the Nexus admin extensions panel using this repository URL. No addit
 ## Avatar Styles
 
 - **Mech** — Industrial robot faces with mechanical features and metallic palettes
-- **Feline** — Cat-inspired faces with expressive eyes and fur markings
-- **Canine** — Dog-inspired faces with snouts, ears, and warm tones
+- **Orc** — Unique orc faces with varying eyes, tusks, scars, war paint
+- **Zombies** — Faded skin tones, eyes, scars, injuries make up the zombie faces
 - **Inkblot** — Abstract symmetrical inkblot patterns
 - **Emblem** — Bold geometric emblems and sigil-like designs
 - **Snowflake** — Intricate crystalline snowflake patterns
